@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Круг</title>
-<meta name="theme-color" content="#1f6f5c">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='44' fill='%231f6f5c'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#d63c7a">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='44' fill='%23ff7eb8'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -202,6 +202,52 @@ mark{background:#ffd54a;color:#000;border-radius:3px;padding:0 1px}
 .tk{margin-left:3px;letter-spacing:-2px}.tk.rd{color:#7fe3ff;opacity:1}
 .ptb{overflow-x:auto}.ptb .chip{flex:1 0 auto;white-space:nowrap}
 .tb2{display:grid;gap:4px}
+
+/* ===== Сакура: светящаяся тема ===== */
+:root{--bg:#fff0f6;--panel:#fffafc;--ink:#3b1a2c;--mut:#9b6a82;--line:#f5d2e1;--me:#e0508a;--them:#fff;--accent:#d63c7a;--on:#fff;--sheet:#fffafc;--glow:rgba(255,105,170,.55);--glow2:rgba(255,150,200,.35);color-scheme:light}
+@media(prefers-color-scheme:dark){:root{--bg:#150a17;--panel:#1d1021;--ink:#ffeaf3;--mut:#c99bb3;--line:#3d213f;--me:#d9457f;--them:#2b1630;--accent:#ff7eb8;--on:#2a0a1b;--sheet:#2b1630;--glow:rgba(255,110,180,.6);--glow2:rgba(255,150,205,.3);color-scheme:dark}}
+:root[data-theme=dark]{--bg:#150a17;--panel:#1d1021;--ink:#ffeaf3;--mut:#c99bb3;--line:#3d213f;--me:#d9457f;--them:#2b1630;--accent:#ff7eb8;--on:#2a0a1b;--sheet:#2b1630;--glow:rgba(255,110,180,.6);--glow2:rgba(255,150,205,.3);color-scheme:dark}
+:root[data-theme=light]{--bg:#fff0f6;--panel:#fffafc;--ink:#3b1a2c;--mut:#9b6a82;--line:#f5d2e1;--me:#e0508a;--them:#fff;--accent:#d63c7a;--on:#fff;--sheet:#fffafc;--glow:rgba(255,105,170,.55);--glow2:rgba(255,150,200,.35);color-scheme:light}
+
+body{background:radial-gradient(ellipse at 15% 0%,var(--glow2),transparent 55%),radial-gradient(ellipse at 90% 100%,var(--glow2),transparent 50%),var(--bg)}
+#app{background:color-mix(in srgb,var(--panel) 88%,transparent);box-shadow:0 0 60px var(--glow2)}
+#main{background:radial-gradient(ellipse at 70% 0%,var(--glow2),transparent 60%),var(--bg)}
+#side h2,.ph,.card h1{color:var(--accent);text-shadow:0 0 14px var(--glow)}
+.card{box-shadow:0 0 0 1px var(--line),0 0 40px var(--glow2)}
+#auth,#setup{background:radial-gradient(ellipse at 50% 20%,var(--glow2),transparent 60%),var(--bg)}
+.card input:focus,#q:focus,#inp:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px var(--glow2),0 0 14px var(--glow2)}
+:focus-visible{outline-color:var(--accent);box-shadow:0 0 10px var(--glow)}
+
+.pri,#go,.padd,.axb .asv,.vp{background:linear-gradient(135deg,#ff8fc4,var(--accent));color:#fff;box-shadow:0 0 14px var(--glow)}
+.padd{background:linear-gradient(135deg,#ff8fc4,#d63c7a)}
+.dot{box-shadow:0 0 8px var(--accent),0 0 16px var(--glow)}
+.ci.on{background:linear-gradient(90deg,var(--glow2),transparent)}
+.av{box-shadow:0 0 0 2px var(--panel),0 0 12px var(--glow2)}
+.me .b{background:linear-gradient(135deg,#ee6aa1,var(--me));box-shadow:0 0 16px var(--glow2)}
+.them .b{box-shadow:0 0 0 1px var(--line),0 0 12px var(--glow2)}
+.me .vp{background:#fff;color:var(--me);box-shadow:none}
+.day{box-shadow:0 0 10px var(--glow2)}
+#tabs{box-shadow:0 4px 24px var(--glow2),0 0 0 1px var(--line)}
+#tabs button.on{background:var(--bg);color:var(--accent);text-shadow:0 0 10px var(--glow);box-shadow:0 0 14px var(--glow2) inset}
+.sw.on{background:var(--accent);box-shadow:0 0 10px var(--glow)}
+.pg i{background:linear-gradient(90deg,#ffb3d6,var(--accent));box-shadow:0 0 8px var(--glow)}
+.chip.on,.ptb .chip.on{box-shadow:0 0 10px var(--glow2)}
+.ptb .chip.on{color:var(--accent)}
+.sec h4,.lnk,.pf a,#bar b{color:var(--accent)}
+#bar div{border-left-color:var(--accent)}
+.nc{box-shadow:0 0 14px color-mix(in srgb,var(--rc) 40%,transparent)}
+mark{background:#ffc2dd;color:#3b1a2c}
+#sheet{background:rgba(40,8,30,.5);backdrop-filter:blur(3px)}
+#sheet>div{box-shadow:0 -4px 40px var(--glow2)}
+.cr,#kpv{box-shadow:0 0 24px var(--glow)}
+#kcall,#krec{background:radial-gradient(ellipse at 50% 30%,#4a1a45,#150a17 70%)}
+
+/* падающие светящиеся лепестки */
+#sakura{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:4}
+#sakura i{position:absolute;top:-30px;width:var(--s);height:calc(var(--s)*.8);border-radius:100% 0 100% 0;background:linear-gradient(135deg,#fff,#ffb7d5 55%,#ff7eb8);opacity:var(--o);filter:drop-shadow(0 0 5px var(--glow));animation:skfall var(--d) linear var(--t) infinite}
+@keyframes skfall{0%{transform:translate3d(0,-30px,0) rotate(0)}25%{transform:translate3d(30px,28vh,0) rotate(110deg)}50%{transform:translate3d(-24px,55vh,0) rotate(220deg)}75%{transform:translate3d(26px,82vh,0) rotate(330deg)}100%{transform:translate3d(-10px,112vh,0) rotate(440deg)}}
+@media(prefers-reduced-motion:reduce){#sakura{display:none}.rb.own{animation:none}}
+.still #sakura{display:none}
 </style>
 </head>
 <body>
@@ -1467,6 +1513,12 @@ async function send(){
   ref.set({last:text.slice(0,80),lastUid:me.uid,ts:ts(),auto:false,typ:{[me.uid]:0},rd:{[me.uid]:ts()},dl:{[me.uid]:ts()}},{merge:true});lastTyp=0;
   if(text.length>=3)uref().set({st:{msgs:FV.increment(1),chats:FV.arrayUnion(ref.id),...(r?{replies:FV.increment(1)}:{})}},{merge:true}).catch(()=>{});
 }
+</script>
+<div id="sakura" aria-hidden="true"></div>
+<script>
+(()=>{const w=document.getElementById('sakura');for(let i=0;i<16;i++){const p=document.createElement('i');
+p.style.cssText='left:'+(Math.random()*100).toFixed(1)+'%;--s:'+(9+Math.random()*10).toFixed(0)+'px;--o:'+(.45+Math.random()*.45).toFixed(2)+';--d:'+(12+Math.random()*12).toFixed(1)+'s;--t:-'+(Math.random()*20).toFixed(1)+'s';
+w.append(p)}})();
 </script>
 </body>
 </html>
