@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Наш чат</title>
+<style>
+:root{--bg:#f6f5f1;--sf:#fff;--tx:#1d1d1b;--mu:#6f6e68;--ac:#4f46e5;--bd:#e3e1d9}
+@media (prefers-color-scheme:dark){:root{--bg:#17171a;--sf:#232328;--tx:#ececea;--mu:#9a9a94;--ac:#6d66f0;--bd:#33333a}}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#app{height:100%;display:flex}
+.pane{display:flex;flex-direction:column;height:100%;min-width:0}
+#side{width:100%;border-right:1px solid var(--bd)}#main{width:100%}
+@media(min-width:800px){#side{width:320px;flex:none}}
+@media(max-width:799px){.chat-open #side{display:none}#main{display:none}.chat-open #main{display:flex}}
+header{padding:12px 14px;background:var(--sf);border-bottom:1px solid var(--bd);display:flex;gap:8px;align-items:center;font-weight:600}
+header .sp{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ib{background:none;color:var(--ac);padding:4px 10px;font-size:20px;border-radius:8px}
+#chats,#list{flex:1;overflow-y:auto}
+.c{padding:12px 14px;border-bottom:1px solid var(--bd);cursor:pointer;background:var(--sf)}
+.c.on{background:var(--bg)}.c b{display:block}.c span{color:var(--mu);font-size:14px}
+#list{padding:12px;display:flex;flex-direction:column;gap:6px}
+.m{max-width:82%;padding:8px 12px;border-radius:16px;background:var(--sf);border:1px solid var(--bd);align-self:flex-start;overflow-wrap:anywhere;cursor:pointer}
+.m.me{align-self:flex-end;background:var(--ac);color:#fff;border-color:transparent}
+.n{font-size:12px;font-weight:600;color:var(--ac)}.me .n{display:none}
+.q{font-size:13px;border-left:3px solid var(--ac);padding-left:8px;margin:2px 0 4px;opacity:.8}
+.me .q{border-color:#fff}
+.m img{max-width:100%;border-radius:10px;display:block;margin:4px 0}
+.t{font-size:11px;opacity:.7;text-align:right}
+.rx{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+.rx span{font-size:13px;background:rgba(127,127,127,.18);border-radius:10px;padding:1px 7px}
+.act{display:flex;gap:6px;margin-top:4px}.act button{padding:2px 8px;font-size:16px;background:rgba(127,127,127,.2);color:inherit;border-radius:10px}
+#rp{padding:6px 14px;background:var(--sf);border-top:1px solid var(--bd);font-size:13px;color:var(--mu);display:flex;justify-content:space-between}
+form{display:flex;gap:6px;padding:10px 12px;background:var(--sf);border-top:1px solid var(--bd)}
+input[type=text]{flex:1;min-width:0;font:inherit;padding:10px 14px;border-radius:22px;border:1px solid var(--bd);background:var(--bg);color:var(--tx)}
+button{font:inherit;border:0;border-radius:22px;padding:10px 16px;background:var(--ac);color:#fff;font-weight:600;cursor:pointer}
+#login{margin:auto;text-align:center;padding:24px}#err{color:#d33;font-size:14px}
+.empty{margin:auto;color:var(--mu);padding:20px;text-align:center}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div id="login"><h2>Наш чат</h2><button id="signin">Войти через Google</button><div id="err"></div></div>
+<div id="app" hidden>
+ <div class="pane" id="side">
+  <header><span class="sp">Чаты</span><button class="ib" id="new" title="Новый чат">＋</button><button class="ib" id="out" title="Выйти">⎋</button></header>
+  <div id="chats"></div>
+ </div>
+ <div class="pane" id="main">
+  <header><button class="ib" id="back">←</button><span class="sp" id="title"></span></header>
+  <div id="list"><div class="empty">Выберите чат или создайте новый (＋)</div></div>
+  <div id="rp" hidden><span id="rpt"></span><span id="rpx">✕</span></div>
+  <form id="f" hidden><button type="button" class="ib" id="att">📎</button><input type="file" id="file" accept="image/*" hidden><input type="text" id="in" placeholder="Сообщение" maxlength="1000" autocomplete="off"><button>→</button></form>
+ </div>
+</div>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getFirestore,collection,doc,setDoc,addDoc,updateDoc,query,where,orderBy,limit,getDocs,onSnapshot,serverTimestamp,arrayUnion,arrayRemove} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+// ВСТАВЬТЕ конфиг из Firebase Console → Project settings → Web app
+const firebaseConfig = {apiKey:"...",authDomain:"...",projectId:"...",storageBucket:"...",messagingSenderId:"...",appId:"..."};
+
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+const $=id=>document.getElementById(id);
+const h=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
+let me,chats=[],cur=null,unsubC,unsubM,reply=null,sel=null,msgs=[];
+
+$("signin").onclick=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>$("err").textContent=e.message);
+$("out").onclick=()=>signOut(auth);
+$("back").onclick=()=>{document.body.classList.remove("chat-open");cur=null};
+
+onAuthStateChanged(auth,async u=>{
+  me=u;$("login").hidden=!!u;$("app").hidden=!u;
+  if(unsubC)unsubC();if(!u)return;
+  await setDoc(doc(db,"users",u.uid),{name:u.displayName||"Друг",email:u.email.toLowerCase()},{merge:true});
+  unsubC=onSnapshot(query(collection(db,"chats"),where("members","array-contains",u.uid)),s=>{
+    chats=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0));
+    drawChats()},e=>$("chats").textContent="Нет доступа: "+e.message);
+});
+
+const chatName=c=>c.type==="group"?c.name:(Object.entries(c.names||{}).find(([k])=>k!==me.uid)||[0,"Чат"])[1];
+function drawChats(){
+  const box=$("chats");box.textContent="";
+  if(!chats.length)box.appendChild(h("div","empty","Чатов пока нет. Нажмите ＋"));
+  chats.forEach(c=>{const e=h("div","c"+(cur&&cur.id===c.id?" on":""));
+    e.append(h("b","",(c.type==="group"?"👥 ":"")+chatName(c)),h("span","",c.lastText||"—"));
+    e.onclick=()=>openChat(c);box.appendChild(e)});
+}
+
+$("new").onclick=async()=>{
+  const raw=prompt("E-mail друга (или несколько через запятую — получится группа):");if(!raw)return;
+  const emails=raw.split(",").map(s=>s.trim().toLowerCase()).filter(Boolean),people=[];
+  for(const em of emails){const s=await getDocs(query(collection(db,"users"),where("email","==",em)));
+    if(s.empty){alert(em+" ещё не заходил в чат");return}people.push({id:s.docs[0].id,name:s.docs[0].data().name})}
+  const names={[me.uid]:me.displayName||"Я"};people.forEach(p=>names[p.id]=p.name);
+  const members=[me.uid,...people.map(p=>p.id)];
+  let id,data={members,names,lastText:"",updatedAt:serverTimestamp()};
+  if(people.length===1){id=[...members].sort().join("_");data.type="dm"}
+  else{const n=prompt("Название группы:");if(!n)return;id=undefined;data.type="group";data.name=n}
+  if(id)await setDoc(doc(db,"chats",id),data,{merge:true});else id=(await addDoc(collection(db,"chats"),data)).id;
+  openChat({id,...data});
+};
+
+function openChat(c){
+  cur=c;reply=null;sel=null;$("rp").hidden=true;$("title").textContent=chatName(c);$("f").hidden=false;
+  document.body.classList.add("chat-open");drawChats();
+  if(unsubM)unsubM();
+  unsubM=onSnapshot(query(collection(db,"chats",c.id,"messages"),orderBy("ts","desc"),limit(150)),s=>{
+    msgs=s.docs.reverse().map(d=>({id:d.id,...d.data()}));drawMsgs(true);
+    msgs.forEach(m=>{if(m.uid!==me.uid&&!(m.readBy||[]).includes(me.uid))
+      updateDoc(doc(db,"chats",c.id,"messages",m.id),{readBy:arrayUnion(me.uid)}).catch(()=>{})});
+  });
+}
+
+function drawMsgs(scroll){
+  const l=$("list");l.textContent="";
+  msgs.forEach(m=>{
+    const mine=m.uid===me.uid,e=h("div","m"+(mine?" me":""));
+    e.appendChild(h("div","n",m.name||"Друг"));
+    if(m.replyTo){const q=h("div","q");q.textContent=(m.replyTo.name||"")+": "+(m.replyTo.text||"📷");e.appendChild(q)}
+    if(m.img){const i=document.createElement("img");i.src=m.img;e.appendChild(i)}
+    if(m.text)e.appendChild(h("div","",m.text));
+    const rx=Object.entries(m.reactions||{}).filter(([,v])=>v.length);
+    if(rx.length){const r=h("div","rx");rx.forEach(([k,v])=>r.appendChild(h("span","",k+" "+v.length)));e.appendChild(r)}
+    const others=(m.readBy||[]).filter(x=>x!==m.uid).length;
+    e.appendChild(h("div","t",(m.ts?m.ts.toDate().toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"}):"")+(mine?(others?" ✓✓":" ✓"):"")));
+    if(sel===m.id){const a=h("div","act");
+      ["👍","❤️","😂"].forEach(em=>{const b=h("button","",em);b.onclick=ev=>{ev.stopPropagation();react(m,em)};a.appendChild(b)});
+      const rb=h("button","","↩");rb.onclick=ev=>{ev.stopPropagation();reply=m;sel=null;$("rpt").textContent="Ответ: "+(m.text||"📷").slice(0,60);$("rp").hidden=false;drawMsgs();$("in").focus()};a.appendChild(rb);e.appendChild(a)}
+    e.onclick=()=>{sel=sel===m.id?null:m.id;drawMsgs()};
+    l.appendChild(e)});
+  if(scroll)l.scrollTop=l.scrollHeight;
+}
+$("rpx").onclick=()=>{reply=null;$("rp").hidden=true};
+
+function react(m,em){
+  const has=(m.reactions?.[em]||[]).includes(me.uid);
+  updateDoc(doc(db,"chats",cur.id,"messages",m.id),{["reactions."+em]:has?arrayRemove(me.uid):arrayUnion(me.uid)});
+  sel=null;
+}
+
+async function send(text,img){
+  const m={uid:me.uid,name:me.displayName||"Друг",ts:serverTimestamp(),readBy:[me.uid]};
+  if(text)m.text=text;if(img)m.img=img;
+  if(reply)m.replyTo={id:reply.id,name:reply.name,text:reply.text||""};
+  reply=null;$("rp").hidden=true;
+  await addDoc(collection(db,"chats",cur.id,"messages"),m);
+  updateDoc(doc(db,"chats",cur.id),{lastText:text||"📷 Фото",updatedAt:serverTimestamp()});
+}
+$("f").onsubmit=e=>{e.preventDefault();const t=$("in").value.trim();if(!t||!cur)return;$("in").value="";
+  send(t).catch(err=>{$("in").value=t;alert("Не отправлено: "+err.message)})};
+
+$("att").onclick=()=>$("file").click();
+$("file").onchange=async e=>{
+  const f=e.target.files[0];e.target.value="";if(!f||!cur)return;
+  const bmp=await createImageBitmap(f),k=Math.min(1,900/Math.max(bmp.width,bmp.height));
+  const cv=document.createElement("canvas");cv.width=bmp.width*k;cv.height=bmp.height*k;
+  cv.getContext("2d").drawImage(bmp,0,0,cv.width,cv.height);
+  send("",cv.toDataURL("image/jpeg",0.7)).catch(err=>alert("Не отправлено: "+err.message));
+};
+</script>
+</body>
+</html>
