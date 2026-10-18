@@ -7,6 +7,7 @@
 <style>
   :root {
     --bg: #17212b;
+    --card: #1f2d3a;
     --text: #ffffff;
     --muted: #7d8b99;
     --accent: #4fd1a5;
@@ -20,26 +21,17 @@
     min-height: 100vh;
     padding-bottom: 90px;
   }
+  .view { display: none; }
+  .view.active { display: block; }
   h1 { font-size: 30px; padding: 28px 16px 12px; }
+  .topbar { display: flex; align-items: center; gap: 8px; padding: 22px 8px 8px; }
+  .topbar h1 { padding: 0; font-size: 24px; }
+  .back { background: none; border: 0; color: var(--text); font-size: 30px; padding: 0 10px; cursor: pointer; }
 
   .list { padding: 0 16px; }
-  .item {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 12px 0;
-    text-decoration: none;
-    color: inherit;
-    cursor: pointer;
-  }
+  .item { display: flex; align-items: center; gap: 16px; padding: 12px 0; text-decoration: none; color: inherit; cursor: pointer; }
   .item:active { opacity: .6; }
-  .icon {
-    flex: 0 0 56px;
-    width: 56px; height: 56px;
-    border-radius: 16px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 28px;
-  }
+  .icon { flex: 0 0 56px; width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px; }
   .title { font-size: 18px; font-weight: 700; }
   .sub { font-size: 14px; color: var(--muted); margin-top: 2px; }
 
@@ -54,105 +46,741 @@
   .c-pink   { background: linear-gradient(135deg, #ff5e9c, #ff8a4c); }
   .c-logout { background: #d9453d; }
 
-  /* Кнопка «Пожертвовать» */
   .donate {
-    position: relative;
-    margin: 6px -8px;
-    padding: 12px 8px;
-    border-radius: 18px;
+    margin: 6px -8px; padding: 12px 8px; border-radius: 18px;
     background: linear-gradient(90deg, rgba(255,94,156,.15), rgba(255,138,76,.10));
     border: 1px solid rgba(255,94,156,.35);
   }
   .donate .icon { animation: pulse 1.8s ease-in-out infinite; }
   .donate .arrow { margin-left: auto; color: var(--muted); font-size: 22px; }
-  @keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50%      { transform: scale(1.08); }
-  }
+  @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
 
-  nav {
-    position: fixed; left: 0; right: 0; bottom: 0;
-    display: flex;
-    background: var(--bg);
-    border-top: 1px solid var(--line);
-    padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
-  }
-  nav a {
-    flex: 1;
-    display: flex; flex-direction: column; align-items: center; gap: 2px;
-    font-size: 13px; color: var(--muted); text-decoration: none;
-  }
+  nav { position: fixed; left: 0; right: 0; bottom: 0; display: flex; background: var(--bg); border-top: 1px solid var(--line); padding: 8px 0 calc(8px + env(safe-area-inset-bottom)); z-index: 5; }
+  nav a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 13px; color: var(--muted); text-decoration: none; }
   nav a span { font-size: 26px; }
   nav a.active { color: var(--accent); }
+
+  /* ---------- Задания и подарки ---------- */
+  .tabs { display: flex; margin: 8px 16px 14px; background: var(--card); border-radius: 12px; padding: 4px; }
+  .tabs button { flex: 1; padding: 10px; border: 0; border-radius: 9px; background: none; color: var(--muted); font-size: 15px; font-weight: 600; cursor: pointer; }
+  .tabs button.on { background: var(--accent); color: #06231a; }
+  .pane { display: none; padding: 0 16px; }
+  .pane.on { display: block; }
+
+  .task { background: var(--card); border-radius: 18px; padding: 14px; margin-bottom: 12px; }
+  .task-head { display: flex; align-items: center; gap: 12px; }
+  .task-gift { flex: 0 0 52px; width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 28px; background: #121b24; }
+  .task-title { font-weight: 700; font-size: 16px; }
+  .task-desc { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-left: 6px; vertical-align: middle; }
+  .d-medium { background: #2a5d8f; }
+  .d-hard { background: #8f3a6e; }
+  .d-legend { background: linear-gradient(90deg, #d9a400, #ff6a3d); color: #1a1000; }
+  .bar { height: 8px; border-radius: 8px; background: #121b24; margin: 12px 0 6px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: linear-gradient(90deg, #4fd1a5, #2f97f0); border-radius: 8px; transition: width .4s; }
+  .task-foot { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--muted); }
+  .btn { border: 0; border-radius: 12px; padding: 9px 14px; font-weight: 700; font-size: 14px; cursor: pointer; color: #06231a; background: var(--accent); }
+  .btn:disabled { background: #2b3a48; color: #6b7b8a; cursor: default; }
+  .btn.ghost { background: #2b3a48; color: var(--text); }
+  .btn.claim { background: linear-gradient(90deg, #ffcf4a, #ff7a3d); color: #2a1500; animation: pulse 1.4s infinite; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .empty { text-align: center; color: var(--muted); padding: 40px 20px; line-height: 1.5; }
+
+  /* Карточка подарка */
+  .gift { position: relative; border-radius: 20px; overflow: hidden; aspect-ratio: 1 / 1.15; cursor: pointer; color: #fff; }
+  .gift .pat { position: absolute; inset: 0; font-size: 18px; line-height: 1.9; letter-spacing: 12px; opacity: .16; overflow: hidden; word-break: break-all; padding: 4px; }
+  .gift .mdl { position: absolute; left: 0; right: 0; top: 18%; text-align: center; font-size: 64px; filter: drop-shadow(0 6px 10px rgba(0,0,0,.35)); }
+  .gift .nm { position: absolute; left: 0; right: 0; bottom: 30px; text-align: center; font-weight: 800; font-size: 15px; text-shadow: 0 1px 4px rgba(0,0,0,.5); }
+  .gift .sn { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; font-size: 12px; opacity: .85; }
+  .gift .rar { position: absolute; top: 8px; right: 8px; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 20px; background: rgba(0,0,0,.35); }
+  .gift.big { aspect-ratio: 1 / 1; border-radius: 24px; cursor: default; }
+  .gift.big .mdl { font-size: 110px; top: 16%; }
+  .gift.big .nm { font-size: 20px; bottom: 40px; }
+  .gift.big .sn { font-size: 14px; bottom: 16px; }
+  .gift.big .pat { font-size: 24px; }
+
+  /* Модалка */
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: center; justify-content: center; z-index: 20; padding: 18px; }
+  .modal.on { display: flex; }
+  .sheet { width: 100%; max-width: 380px; background: var(--bg); border-radius: 24px; padding: 18px; max-height: 92vh; overflow: auto; animation: pop .35s cubic-bezier(.2,1.4,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .sheet h2 { text-align: center; margin: 14px 0 4px; font-size: 20px; }
+  .sheet .lead { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+  .attrs { margin: 14px 0; }
+  .attr { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+  .attr b { color: var(--muted); font-weight: 500; }
+  .attr em { font-style: normal; font-size: 12px; color: var(--accent); margin-left: 6px; }
+  .row { display: flex; gap: 10px; }
+  .row .btn { flex: 1; }
+  .toast { position: fixed; left: 50%; bottom: 100px; transform: translateX(-50%); background: #2b3a48; padding: 10px 16px; border-radius: 12px; font-size: 14px; z-index: 30; display: none; }
+  .note { font-size: 12px; color: var(--muted); text-align: center; padding: 8px 16px 20px; }
+
+  /* ---------- Подстраницы настроек ---------- */
+  .body { padding: 0 16px 20px; }
+  .body .sec { padding-left: 0; padding-right: 0; }
+  .sec { font-size: 13px; font-weight: 700; color: var(--accent); padding: 18px 0 6px; text-transform: uppercase; letter-spacing: .5px; }
+  .sw-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .sw-row .t { font-size: 16px; font-weight: 600; }
+  .sw-row .s { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  input.sw { -webkit-appearance: none; appearance: none; flex: 0 0 46px; width: 46px; height: 28px; border-radius: 20px; background: #3a4a5a; position: relative; cursor: pointer; transition: background .2s; outline: none; }
+  input.sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: transform .2s; }
+  input.sw:checked { background: var(--accent); }
+  input.sw:checked::after { transform: translateX(18px); }
+  select.sel { background: var(--card); color: var(--text); border: 0; border-radius: 10px; padding: 9px 10px; font-size: 14px; max-width: 50%; outline: none; }
+  .field { margin: 14px 0; }
+  .field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .field input[type=text], .field textarea { width: 100%; background: var(--card); border: 1px solid transparent; border-radius: 12px; color: var(--text); font-size: 16px; padding: 12px; outline: none; font-family: inherit; resize: none; }
+  .field input:focus, .field textarea:focus { border-color: var(--accent); }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .hint.err { color: #ff6b6b; }
+  .avatar { width: 112px; height: 112px; border-radius: 50%; margin: 18px auto 10px; display: flex; align-items: center; justify-content: center; font-size: 58px; background: linear-gradient(135deg, #2f97f0, #4fd1a5); background-size: cover; background-position: center; cursor: pointer; overflow: hidden; }
+  .avbtns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 6px; }
+  .avbtns .btn { padding: 9px 12px; }
+  .navph { display: block; width: 30px; height: 30px; border-radius: 50%; background-size: cover; background-position: center; margin-bottom: 2px; }
+  .preview { margin: 10px 0 4px; border-radius: 18px; padding: 14px; min-height: 150px; display: flex; flex-direction: column; gap: 8px; }
+  .bub { max-width: 80%; padding: 8px 12px; border-radius: 16px; line-height: 1.35; font-size: 16px; }
+  .bub.in { background: #fff; color: #111; align-self: flex-start; border-bottom-left-radius: 4px; }
+  .bub.out { background: #3c8ddb; color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+  .wps { display: flex; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
+  .wp { width: 44px; height: 44px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; }
+  .wp.on { border-color: var(--accent); }
+  .range { width: 100%; accent-color: var(--accent); margin: 6px 0; }
+  .folder { display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 14px; padding: 12px; margin-bottom: 10px; }
+  .folder .fe { font-size: 26px; }
+  .folder .fn { flex: 1; font-weight: 600; }
+  .folder .del { background: none; border: 0; color: #ff6b6b; font-size: 20px; cursor: pointer; padding: 4px 8px; }
+  .addrow { display: flex; gap: 8px; margin-top: 8px; }
+  .addrow input { flex: 1; min-width: 0; background: var(--card); border: 1px solid transparent; border-radius: 12px; color: var(--text); font-size: 16px; padding: 11px; outline: none; }
+  .stat { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+  .stat b { color: var(--muted); font-weight: 500; }
+  .full { width: 100%; margin-top: 12px; padding: 13px; }
+  .btn.danger { background: #d9453d; color: #fff; }
+  .nbadge { position: absolute; top: -2px; left: 54%; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 10px; background: #ef5350; color: #fff; font-size: 11px; display: none; align-items: center; justify-content: center; }
+  #v-out { position: fixed; inset: 0; background: var(--bg); z-index: 40; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 30px; }
+  #v-out.on { display: flex; }
+
+  html[data-theme=light] { --bg: #ffffff; --card: #eef2f6; --text: #111827; --muted: #6b7785; --line: #e2e8ee; }
+  html[data-theme=light] .btn.ghost { background: #dde3e9; color: #111; }
+  html[data-theme=light] .bar, html[data-theme=light] .task-gift { background: #e2e8ee; }
+  html[data-theme=light] input.sw { background: #c3ccd5; }
+  html[data-theme=light] input.sw:checked { background: var(--accent); }
+  html[data-anim=off] *, html[data-psave=on] * { animation: none !important; transition: none !important; }
 </style>
 </head>
 <body>
 
-<h1>Настройки</h1>
+<!-- ============ НАСТРОЙКИ ============ -->
+<section class="view active" id="v-settings">
+  <h1>Настройки</h1>
+  <div class="list">
+    <div class="item" data-page="account"><div class="icon c-blue">👤</div><div><div class="title">Аккаунт</div><div class="sub">Имя, @имя пользователя, «О себе»</div></div></div>
+    <div class="item" data-page="chats"><div class="icon c-orange">💬</div><div><div class="title">Настройки чатов</div><div class="sub">Обои, ночной режим, анимации</div></div></div>
+    <div class="item" data-page="privacy"><div class="icon c-green">🔑</div><div><div class="title">Конфиденциальность</div><div class="sub">Время захода, прочтение, «печатает»</div></div></div>
+    <div class="item" data-page="notif"><div class="icon c-red">🔔</div><div><div class="title">Уведомления</div><div class="sub">Звуки, всплывающие, счётчик</div></div></div>
+    <div class="item" data-page="data"><div class="icon c-indigo">💾</div><div><div class="title">Данные и память</div><div class="sub">Качество фото, кэш, черновики</div></div></div>
+    <div class="item" data-page="folders"><div class="icon c-sky">📁</div><div><div class="title">Папки с чатами</div><div class="sub">Сортировка чатов по папкам</div></div></div>
+    <div class="item" data-page="power"><div class="icon c-amber">🔋</div><div><div class="title">Энергосбережение</div><div class="sub">Экономия при низком заряде</div></div></div>
 
-<div class="list">
-  <div class="item">
-    <div class="icon c-blue">👤</div>
-    <div><div class="title">Аккаунт</div><div class="sub">Имя, @имя пользователя, «О себе»</div></div>
-  </div>
-
-  <div class="item">
-    <div class="icon c-orange">💬</div>
-    <div><div class="title">Настройки чатов</div><div class="sub">Обои, ночной режим, анимации</div></div>
-  </div>
-
-  <div class="item">
-    <div class="icon c-green">🔑</div>
-    <div><div class="title">Конфиденциальность</div><div class="sub">Время захода, прочтение, «печатает»</div></div>
-  </div>
-
-  <div class="item">
-    <div class="icon c-red">🔔</div>
-    <div><div class="title">Уведомления</div><div class="sub">Звуки, всплывающие, счётчик</div></div>
-  </div>
-
-  <div class="item">
-    <div class="icon c-indigo">💾</div>
-    <div><div class="title">Данные и память</div><div class="sub">Качество фото, кэш, черновики</div></div>
-  </div>
-
-  <div class="item">
-    <div class="icon c-sky">📁</div>
-    <div><div class="title">Папки с чатами</div><div class="sub">Сортировка чатов по папкам</div></div>
-  </div>
-
-  <div class="item">
-    <div class="icon c-amber">🔋</div>
-    <div><div class="title">Энергосбережение</div><div class="sub">Экономия при низком заряде</div></div>
-  </div>
-
-  <div class="item">
-    <div class="icon c-yellow">⭐</div>
-    <div><div class="title">Задания и подарки</div><div class="sub">Награды, коллекция, отправка</div></div>
-  </div>
-
-  <!-- ПОЖЕРТВОВАТЬ -->
-  <a class="item donate" href="https://donatty.com/dekiartv6t" target="_blank" rel="noopener">
-    <div class="icon c-pink">💖</div>
-    <div>
-      <div class="title">Пожертвовать</div>
-      <div class="sub">Поддержать развитие мессенджера</div>
+    <div class="item" id="openGifts">
+      <div class="icon c-yellow">⭐</div>
+      <div><div class="title">Задания и подарки</div><div class="sub">Награды, коллекция, отправка</div></div>
     </div>
-    <div class="arrow">›</div>
-  </a>
 
-  <div class="item">
-    <div class="icon c-logout">🚪</div>
-    <div><div class="title">Выйти</div><div class="sub">Выйти из аккаунта</div></div>
+    <a class="item donate" href="https://donatty.com/dekiartv6t" target="_blank" rel="noopener">
+      <div class="icon c-pink">💖</div>
+      <div><div class="title">Пожертвовать</div><div class="sub">Поддержать развитие мессенджера</div></div>
+      <div class="arrow">›</div>
+    </a>
+
+    <div class="item" data-page="logout"><div class="icon c-logout">🚪</div><div><div class="title">Выйти</div><div class="sub">Выйти из аккаунта</div></div></div>
   </div>
+</section>
+
+<!-- ============ ЗАДАНИЯ И ПОДАРКИ ============ -->
+<section class="view" id="v-gifts">
+  <div class="topbar"><button class="back" id="backBtn">‹</button><h1>Задания и подарки</h1></div>
+  <div class="tabs">
+    <button class="on" data-pane="p-tasks">Задания</button>
+    <button data-pane="p-coll">Коллекция <span id="collCount"></span></button>
+  </div>
+
+  <div class="pane on" id="p-tasks"></div>
+  <div class="pane" id="p-coll"></div>
+
+  <p class="note">Подарки — это коллекционные цифровые предметы внутри мессенджера. Каждый уникален: свой номер, фон и узор.</p>
+</section>
+
+<!-- ============ ПОДСТРАНИЦЫ НАСТРОЕК ============ -->
+<section class="view" id="v-sub">
+  <div class="topbar"><button class="back" id="subBack">‹</button><h1 id="subTitle"></h1></div>
+  <div class="body" id="subBody"></div>
+</section>
+
+<!-- Экран после выхода -->
+<div id="v-out">
+  <div style="font-size:64px">🚪</div>
+  <h2>Вы вышли из аккаунта</h2>
+  <p class="sub">Настройки и подарки сохранены на этом устройстве</p>
+  <button class="btn" id="loginAgain">Войти снова</button>
 </div>
 
+<!-- Модалка подарка -->
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+<input type="file" id="avFile" accept="image/*" hidden>
+
 <nav>
-  <a href="#"><span>💬</span>Чаты</a>
+  <a href="#" style="position:relative"><span>💬</span>Чаты<b class="nbadge" id="navBadge"></b></a>
   <a href="#"><span>👥</span>Контакты</a>
   <a href="#" class="active"><span>⚙️</span>Настройки</a>
-  <a href="#"><span>🦁</span>Профиль</a>
+  <a href="#"><span id="navAv">🦁</span>Профиль</a>
 </nav>
 
+<script>
+/* ===================== ДАННЫЕ ===================== */
+const DIFF = {
+  medium: { label: 'Средне',     cls: 'd-medium', supply: 50000, rarity: 'Редкий' },
+  hard:   { label: 'Сложно',     cls: 'd-hard',   supply: 5000,  rarity: 'Эпический' },
+  legend: { label: 'Легендарно', cls: 'd-legend', supply: 500,   rarity: 'Легендарный' }
+};
+
+const MODELS = {
+  dragon:  { e: '🐉', n: 'Огнедышащий дракон' },
+  crown:   { e: '👑', n: 'Королевская корона' },
+  diamond: { e: '💎', n: 'Алмаз судьбы' },
+  rocket:  { e: '🚀', n: 'Космический экспресс' },
+  unicorn: { e: '🦄', n: 'Радужный единорог' },
+  orb:     { e: '🔮', n: 'Шар предсказаний' },
+  cup:     { e: '🏆', n: 'Кубок чемпиона' },
+  wolf:    { e: '🐺', n: 'Лунный волк' },
+  lion:    { e: '🦁', n: 'Золотой лев' },
+  phoenix: { e: '🦅', n: 'Феникс' }
+};
+
+const BACKDROPS = [
+  { n: 'Полночь',  c: ['#1b2a6b', '#0a0f2e'] },
+  { n: 'Закат',    c: ['#ff7a3d', '#8f1f5a'] },
+  { n: 'Изумруд',  c: ['#1fbf8f', '#0b4a3b'] },
+  { n: 'Рубин',    c: ['#e0364f', '#5a0d1d'] },
+  { n: 'Океан',    c: ['#2aa8e0', '#0b3a66'] },
+  { n: 'Золото',   c: ['#f2c14e', '#8a5a00'] },
+  { n: 'Лёд',      c: ['#a8e6ff', '#3a7fb0'] },
+  { n: 'Аметист',  c: ['#a45be0', '#35145c'] }
+];
+
+const SYMBOLS = ['✦', '❄', '♥', '☾', '⚡', '✿', '◆', '☘'];
+
+const TASKS = [
+  { id: 't1', title: 'Болтун',          desc: 'Отправь 500 сообщений',                 goal: 500,  diff: 'medium', pool: ['rocket', 'orb'] },
+  { id: 't2', title: 'Неделя без пропусков', desc: 'Заходи в мессенджер 7 дней подряд', goal: 7,    diff: 'medium', pool: ['cup', 'unicorn'] },
+  { id: 't3', title: 'Душа компании',   desc: 'Пригласи 10 друзей',                    goal: 10,   diff: 'hard',   pool: ['wolf', 'crown', 'unicorn'] },
+  { id: 't4', title: 'Марафонец',       desc: 'Заходи 30 дней подряд',                 goal: 30,   diff: 'hard',   pool: ['dragon', 'phoenix'] },
+  { id: 't5', title: 'Мастер порядка',  desc: 'Создай 5 папок и разложи 50 чатов',     goal: 55,   diff: 'hard',   pool: ['diamond', 'orb', 'crown'] },
+  { id: 't6', title: 'Легенда',         desc: 'Отправь 10 000 сообщений',              goal: 10000,diff: 'legend', pool: ['lion', 'dragon', 'phoenix', 'diamond'] }
+];
+
+/* ===================== СОСТОЯНИЕ ===================== */
+const KEY = 'liks_gifts_v1';
+let S;
+try { S = JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { S = null; }
+if (!S) S = { progress: {}, claimed: {}, gifts: [] };
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+
+const $ = (id) => document.getElementById(id);
+const rnd = (n) => Math.floor(Math.random() * n);
+const pick = (a) => a[rnd(a.length)];
+
+/* ===================== ЛОГИКА ===================== */
+function makeGift(task) {
+  const d = DIFF[task.diff];
+  const key = pick(task.pool);
+  const bd = pick(BACKDROPS);
+  const sym = pick(SYMBOLS);
+  return {
+    uid: Date.now().toString(36) + rnd(1e6).toString(36),
+    model: key,
+    backdrop: BACKDROPS.indexOf(bd),
+    symbol: sym,
+    serial: 1 + rnd(d.supply),
+    supply: d.supply,
+    rarity: d.rarity,
+    pm: { model: 5 + rnd(25), backdrop: 5 + rnd(25), symbol: 5 + rnd(25) },
+    date: new Date().toLocaleDateString('ru-RU')
+  };
+}
+
+/* Публичный API — вызывайте из мессенджера:
+   Gifts.addProgress('t1', 1)  — +1 отправленное сообщение и т.д. */
+window.Gifts = {
+  addProgress(id, n = 1) {
+    const t = TASKS.find(x => x.id === id);
+    if (!t || S.claimed[id]) return;
+    S.progress[id] = Math.min(t.goal, (S.progress[id] || 0) + n);
+    save(); renderTasks();
+  }
+};
+
+function claim(id) {
+  const t = TASKS.find(x => x.id === id);
+  if (!t || S.claimed[id] || (S.progress[id] || 0) < t.goal) return;
+  const g = makeGift(t);
+  S.claimed[id] = true;
+  S.gifts.unshift(g);
+  save(); renderTasks(); renderColl();
+  openGift(g, true);
+}
+
+/* ===================== ОТРИСОВКА ===================== */
+function giftHTML(g, big) {
+  const m = MODELS[g.model], b = BACKDROPS[g.backdrop];
+  const pat = (g.symbol + ' ').repeat(big ? 90 : 70);
+  return `<div class="gift ${big ? 'big' : ''}" data-uid="${g.uid}"
+      style="background: radial-gradient(circle at 50% 35%, ${b.c[0]}, ${b.c[1]})">
+      <div class="pat">${pat}</div>
+      <div class="rar">${g.rarity}</div>
+      <div class="mdl">${m.e}</div>
+      <div class="nm">${m.n}</div>
+      <div class="sn">#${g.serial.toLocaleString('ru-RU')} / ${g.supply.toLocaleString('ru-RU')}</div>
+    </div>`;
+}
+
+function renderTasks() {
+  $('p-tasks').innerHTML = TASKS.map(t => {
+    const p = S.progress[t.id] || 0;
+    const done = p >= t.goal, got = S.claimed[t.id];
+    const d = DIFF[t.diff];
+    const pct = Math.round(p / t.goal * 100);
+    const icon = MODELS[t.pool[0]].e;
+    let action;
+    if (got) action = '<button class="btn" disabled>Получено ✓</button>';
+    else if (done) action = `<button class="btn claim" data-claim="${t.id}">🎁 Забрать</button>`;
+    else action = `<button class="btn ghost" data-step="${t.id}">+ шаг (тест)</button>`;
+    return `<div class="task">
+      <div class="task-head">
+        <div class="task-gift">${got ? '✅' : icon}</div>
+        <div>
+          <div class="task-title">${t.title}<span class="badge ${d.cls}">${d.label}</span></div>
+          <div class="task-desc">${t.desc}</div>
+        </div>
+      </div>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      <div class="task-foot"><span>${p.toLocaleString('ru-RU')} / ${t.goal.toLocaleString('ru-RU')}</span>${action}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderColl() {
+  $('collCount').textContent = S.gifts.length ? '(' + S.gifts.length + ')' : '';
+  $('p-coll').innerHTML = S.gifts.length
+    ? `<div class="grid">${S.gifts.map(g => giftHTML(g, false)).join('')}</div>`
+    : `<div class="empty">🎁<br>Коллекция пуста.<br>Выполняйте сложные задания — получайте уникальные подарки.</div>`;
+}
+
+function openGift(g, isNew) {
+  const m = MODELS[g.model], b = BACKDROPS[g.backdrop];
+  $('sheet').innerHTML = `
+    ${giftHTML(g, true)}
+    <h2>${isNew ? '🎉 Новый подарок!' : m.n}</h2>
+    <div class="lead">${isNew ? 'Награда за выполненное задание' : 'Получен ' + g.date}</div>
+    <div class="attrs">
+      <div class="attr"><b>Модель</b><span>${m.n}<em>${(g.pm.model / 10).toFixed(1)}%</em></span></div>
+      <div class="attr"><b>Фон</b><span>${b.n}<em>${(g.pm.backdrop / 10).toFixed(1)}%</em></span></div>
+      <div class="attr"><b>Узор</b><span>${g.symbol}<em>${(g.pm.symbol / 10).toFixed(1)}%</em></span></div>
+      <div class="attr"><b>Номер</b><span>#${g.serial.toLocaleString('ru-RU')} из ${g.supply.toLocaleString('ru-RU')}</span></div>
+    </div>
+    <div class="row">
+      <button class="btn ghost" id="shareBtn">📤 Отправить</button>
+      <button class="btn" id="closeBtn">Закрыть</button>
+    </div>`;
+  $('modal').classList.add('on');
+  $('closeBtn').onclick = () => $('modal').classList.remove('on');
+  $('shareBtn').onclick = () => shareGift(g);
+}
+
+function shareGift(g) {
+  const m = MODELS[g.model];
+  const text = `${m.e} ${m.n} #${g.serial}/${g.supply} — мой подарок из мессенджера!`;
+  if (navigator.share) navigator.share({ text }).catch(() => {});
+  else if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => toast('Скопировано'));
+  else toast(text);
+}
+
+function toast(t) {
+  const el = $('toast'); el.textContent = t; el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 1800);
+}
+
+/* ===================== СОБЫТИЯ ===================== */
+function show(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  $(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+$('openGifts').onclick = () => show('v-gifts');
+$('backBtn').onclick = () => show('v-settings');
+
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabs button').forEach(x => x.classList.remove('on'));
+  document.querySelectorAll('.pane').forEach(x => x.classList.remove('on'));
+  b.classList.add('on'); $(b.dataset.pane).classList.add('on');
+});
+
+document.addEventListener('click', (e) => {
+  const c = e.target.closest('[data-claim]');
+  if (c) return claim(c.dataset.claim);
+  const s = e.target.closest('[data-step]');
+  if (s) { // тестовая кнопка: двигает прогресс ~15% цели
+    const t = TASKS.find(x => x.id === s.dataset.step);
+    return Gifts.addProgress(t.id, Math.max(1, Math.ceil(t.goal * 0.15)));
+  }
+  const g = e.target.closest('.grid .gift');
+  if (g) openGift(S.gifts.find(x => x.uid === g.dataset.uid), false);
+  if (e.target === $('modal')) $('modal').classList.remove('on');
+});
+
+renderTasks();
+renderColl();
+
+/* ===================== НАСТРОЙКИ ===================== */
+const SK = 'liks_settings_v1';
+const DEF = {
+  name: '', username: '', bio: '', avatar: '🦁', avatarPhoto: '',
+  night: true, anim: true, wallpaper: 0, fontSize: 16,
+  lastSeen: 'all', whoWrite: 'all', readReceipts: true, typing: true,
+  nSound: true, nPopup: true, nVibrate: true, nCounter: true,
+  photoQ: 'medium', autoDl: true,
+  folders: [],
+  psave: false, psAuto: true, psThreshold: 20
+};
+let ST;
+try { ST = Object.assign({}, DEF, JSON.parse(localStorage.getItem(SK) || '{}')); } catch (e) { ST = Object.assign({}, DEF); }
+const saveST = () => { try { localStorage.setItem(SK, JSON.stringify(ST)); return true; } catch (e) { return false; } };
+
+/* Для мессенджера: Settings.get('readReceipts'), Settings.get('folders') и т.д. */
+window.Settings = { get: (k) => k ? ST[k] : Object.assign({}, ST) };
+window._unread = 0;
+window.setUnread = (n) => { window._unread = n; updBadge(); };
+
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const AVATARS = ['🦁', '🐺', '🦊', '🐼', '🐯', '🦄', '🐲', '🚀'];
+const FEMOJI = ['📁', '💼', '👪', '⭐', '🎮', '📚'];
+const WALLS = [
+  'linear-gradient(135deg,#6a85b6,#bac8e0)', 'linear-gradient(135deg,#43cea2,#185a9d)',
+  'linear-gradient(135deg,#ff9a9e,#fad0c4)', 'linear-gradient(135deg,#232526,#414345)',
+  'linear-gradient(135deg,#f6d365,#fda085)', 'linear-gradient(135deg,#667eea,#764ba2)'
+];
+
+const swRow = (k, t, s) => `<label class="sw-row"><div><div class="t">${t}</div>${s ? `<div class="s">${s}</div>` : ''}</div><input type="checkbox" class="sw" data-k="${k}" ${ST[k] ? 'checked' : ''}></label>`;
+const selRow = (k, t, opts) => `<div class="sw-row"><div class="t">${t}</div><select class="sel" data-k="${k}">${opts.map(o => `<option value="${o[0]}" ${ST[k] === o[0] ? 'selected' : ''}>${o[1]}</option>`).join('')}</select></div>`;
+
+/* ---------- Батарея / энергосбережение ---------- */
+let batt = null, psActive = false;
+function updPower() {
+  const lvl = batt ? batt.level * 100 : 100;
+  const charging = batt ? batt.charging : false;
+  psActive = ST.psave || (ST.psAuto && !!batt && !charging && lvl <= ST.psThreshold);
+  document.documentElement.dataset.psave = psActive ? 'on' : 'off';
+  const el = $('psStatus');
+  if (el) {
+    const b = batt ? `Заряд: ${Math.round(lvl)}% · ${charging ? 'заряжается' : 'от батареи'}` : 'Данные о батарее в этом браузере недоступны';
+    el.innerHTML = `<div class="stat"><b>Батарея</b><span>${b}</span></div><div class="stat"><b>Режим сейчас</b><span>${psActive ? 'включён 🔋' : 'выключен'}</span></div>`;
+  }
+}
+if (navigator.getBattery) {
+  navigator.getBattery().then(b => {
+    batt = b;
+    ['levelchange', 'chargingchange'].forEach(ev => b.addEventListener(ev, updPower));
+    updPower();
+  }).catch(() => {});
+}
+
+/* ---------- Применение настроек ---------- */
+function updBadge() {
+  const b = $('navBadge'), n = window._unread || 0;
+  b.textContent = n > 99 ? '99+' : n;
+  b.style.display = (ST.nCounter && n > 0) ? 'flex' : 'none';
+}
+function updAccountSub() {
+  const el = document.querySelector('[data-page=account] .sub');
+  if (el) el.textContent = ST.username ? '@' + ST.username + (ST.name ? ' · ' + ST.name : '') : 'Имя, @имя пользователя, «О себе»';
+}
+function applyAll() {
+  const r = document.documentElement;
+  r.dataset.theme = ST.night ? 'dark' : 'light';
+  r.dataset.anim = ST.anim ? 'on' : 'off';
+  updPower(); updBadge(); updAccountSub(); updAvatar();
+}
+
+/* ---------- Аватар: фото из галереи ---------- */
+function updAvatar() {
+  const ph = ST.avatarPhoto;
+  const box = $('avatarBox');
+  if (box) {
+    box.style.backgroundImage = ph ? `url("${ph}")` : '';
+    box.textContent = ph ? '' : ST.avatar;
+  }
+  const del = $('avDel');
+  if (del) del.style.display = ph ? '' : 'none';
+  const n = $('navAv');
+  if (n) {
+    n.classList.toggle('navph', !!ph);
+    n.style.backgroundImage = ph ? `url("${ph}")` : '';
+    n.textContent = ph ? '' : ST.avatar;
+  }
+}
+function loadImg(f) {
+  return new Promise((res, rej) => {
+    const u = URL.createObjectURL(f), im = new Image();
+    im.onload = () => { URL.revokeObjectURL(u); res(im); };
+    im.onerror = () => { URL.revokeObjectURL(u); rej(new Error('bad image')); };
+    im.src = u;
+  });
+}
+async function setPhoto(f) {
+  if (!f) return;
+  if (!/^image\//.test(f.type)) return toast('Выберите изображение');
+  if (f.size > 20 * 1048576) return toast('Файл больше 20 МБ');
+  try {
+    const im = await loadImg(f);
+    const s = Math.min(im.naturalWidth, im.naturalHeight);
+    if (!s) throw new Error('empty');
+    const c = document.createElement('canvas');
+    c.width = c.height = 320;
+    c.getContext('2d').drawImage(im, (im.naturalWidth - s) / 2, (im.naturalHeight - s) / 2, s, s, 0, 0, 320, 320);
+    const prev = ST.avatarPhoto;
+    ST.avatarPhoto = c.toDataURL('image/jpeg', 0.85);
+    if (!saveST()) { ST.avatarPhoto = prev; return toast('Не хватило памяти браузера'); }
+    updAvatar(); toast('Фото установлено ✓');
+  } catch (e) {
+    toast('Не удалось открыть это изображение');
+  }
+}
+$('avFile').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; setPhoto(f); });
+function updPreview() {
+  const pv = $('pv'); if (!pv) return;
+  pv.style.background = WALLS[ST.wallpaper];
+  pv.querySelectorAll('.bub').forEach(b => b.style.fontSize = ST.fontSize + 'px');
+  if ($('fsLbl')) $('fsLbl').textContent = ST.fontSize;
+  document.querySelectorAll('.wp').forEach((w, i) => w.classList.toggle('on', i === ST.wallpaper));
+}
+
+/* ---------- Уведомления (тест) ---------- */
+function beep() {
+  try {
+    const a = new (window.AudioContext || window.webkitAudioContext)();
+    const o = a.createOscillator(), g = a.createGain();
+    o.connect(g); g.connect(a.destination); o.frequency.value = 880;
+    g.gain.setValueAtTime(.2, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001, a.currentTime + .4);
+    o.start(); o.stop(a.currentTime + .4);
+  } catch (e) {}
+}
+async function testN() {
+  if (ST.nSound) beep();
+  if (ST.nVibrate && navigator.vibrate) navigator.vibrate(200);
+  if (ST.nPopup && 'Notification' in window) {
+    let p = Notification.permission;
+    if (p === 'default') p = await Notification.requestPermission();
+    if (p === 'granted') new Notification('Новое сообщение', { body: 'Так будет выглядеть уведомление' });
+    else toast('Разрешите уведомления в настройках браузера');
+  } else toast('Тест выполнен');
+}
+
+/* ---------- Размер данных ---------- */
+const bytesOf = (k) => { const v = localStorage.getItem(k); return v ? (k.length + v.length) * 2 : 0; };
+const fmt = (b) => b < 1024 ? b + ' Б' : (b / 1024).toFixed(1) + ' КБ';
+const keysWith = (p) => Object.keys(localStorage).filter(k => k.indexOf(p) === 0);
+const sumKeys = (p) => keysWith(p).reduce((a, k) => a + bytesOf(k), 0);
+
+/* ---------- Страницы ---------- */
+const PAGES = {
+  account: { title: 'Аккаунт', render: () => `
+    <div class="avatar" data-act="pickPhoto" id="avatarBox" style="${ST.avatarPhoto ? `background-image:url('${ST.avatarPhoto}')` : ''}">${ST.avatarPhoto ? '' : ST.avatar}</div>
+    <div class="avbtns">
+      <button class="btn ghost" data-act="pickPhoto">📷 Фото из галереи</button>
+      <button class="btn ghost" data-act="emoji">🙂 Эмодзи</button>
+      <button class="btn ghost" data-act="delPhoto" id="avDel">🗑 Убрать фото</button>
+    </div>
+    <div class="hint" style="text-align:center">Фото обрезается по центру до квадрата и хранится только на этом устройстве</div>
+    <div class="field"><label>Имя</label><input type="text" id="fName" maxlength="40" value="${esc(ST.name)}" placeholder="Как вас зовут"></div>
+    <div class="field"><label>Имя пользователя</label><input type="text" id="fUser" maxlength="32" value="${esc(ST.username)}" placeholder="username" autocapitalize="off">
+      <div class="hint" id="unHint">От 5 до 32 символов: латиница, цифры и _, начинается с буквы</div></div>
+    <div class="field"><label>О себе</label><textarea id="fBio" rows="3" maxlength="70" placeholder="Пара слов о вас">${esc(ST.bio)}</textarea>
+      <div class="hint"><span id="bioCnt">${ST.bio.length}</span> / 70</div></div>
+    <button class="btn full" data-act="saveAcc">Сохранить</button>`, after: () => updAvatar() },
+
+  chats: { title: 'Настройки чатов', render: () => `
+    <div class="preview" id="pv">
+      <div class="bub in">Привет! Как дела?</div>
+      <div class="bub out">Отлично, тестирую новый мессенджер 🚀</div>
+      <div class="bub in">Выглядит круто!</div>
+    </div>
+    <div class="sec">Обои</div>
+    <div class="wps">${WALLS.map((w, i) => `<div class="wp ${ST.wallpaper === i ? 'on' : ''}" data-wp="${i}" style="background:${w}"></div>`).join('')}</div>
+    <div class="sec">Размер текста: <span id="fsLbl">${ST.fontSize}</span></div>
+    <input type="range" class="range" data-k="fontSize" min="12" max="22" step="1" value="${ST.fontSize}">
+    <div class="sec">Оформление</div>
+    ${swRow('night', 'Ночной режим', 'Тёмное оформление приложения')}
+    ${swRow('anim', 'Анимации', 'Плавные переходы и эффекты')}`, after: updPreview },
+
+  privacy: { title: 'Конфиденциальность', render: () => `
+    <div class="sec">Кто видит</div>
+    ${selRow('lastSeen', 'Время захода', [['all', 'Все'], ['contacts', 'Мои контакты'], ['nobody', 'Никто']])}
+    ${selRow('whoWrite', 'Кто может писать мне', [['all', 'Все'], ['contacts', 'Только контакты']])}
+    <div class="sec">Активность в чате</div>
+    ${swRow('readReceipts', 'Отчёты о прочтении', 'Если выключить, вы тоже не увидите, прочитали ли ваши сообщения')}
+    ${swRow('typing', 'Статус «печатает»', 'Показывать собеседнику, что вы набираете текст')}` },
+
+  notif: { title: 'Уведомления', render: () => `
+    ${swRow('nSound', 'Звуки', 'Сигнал при новом сообщении')}
+    ${swRow('nPopup', 'Всплывающие', 'Показывать уведомление поверх экрана')}
+    ${swRow('nVibrate', 'Вибрация', 'Короткая вибрация при сообщении')}
+    ${swRow('nCounter', 'Счётчик', 'Число непрочитанных на вкладке «Чаты»')}
+    <button class="btn full" data-act="testN">🔔 Проверить уведомление</button>` },
+
+  data: { title: 'Данные и память', render: () => `
+    <div class="sec">Использование памяти</div>
+    <div class="stat"><b>Кэш</b><span id="stCache">${fmt(sumKeys('liks_cache'))}</span></div>
+    <div class="stat"><b>Черновики</b><span id="stDraft">${fmt(sumKeys('liks_drafts'))}</span></div>
+    <div class="stat"><b>Всего</b><span id="stAll">${fmt(sumKeys('liks_'))}</span></div>
+    <div class="sec">Медиа</div>
+    ${selRow('photoQ', 'Качество фото', [['low', 'Низкое'], ['medium', 'Среднее'], ['high', 'Высокое']])}
+    ${swRow('autoDl', 'Автозагрузка медиа', 'Загружать фото и видео автоматически')}
+    <button class="btn ghost full" data-act="clearCache">🧹 Очистить кэш</button>
+    <button class="btn ghost full" data-act="clearDrafts">📝 Удалить черновики</button>
+    <button class="btn danger full" data-act="resetAll">Сбросить все настройки</button>` },
+
+  folders: { title: 'Папки с чатами', render: () => `
+    <div id="fList">${foldersHTML()}</div>
+    <div class="sec">Новая папка</div>
+    <div class="addrow">
+      <select class="sel" id="fEmoji">${FEMOJI.map(e => `<option>${e}</option>`).join('')}</select>
+      <input type="text" id="fNew" maxlength="20" placeholder="Название папки">
+      <button class="btn" data-act="addFolder">＋</button>
+    </div>
+    <div class="hint">До 10 папок. Список доступен мессенджеру: Settings.get('folders')</div>` },
+
+  power: { title: 'Энергосбережение', render: () => `
+    ${swRow('psave', 'Включить сейчас', 'Отключает анимации и лишние эффекты')}
+    ${swRow('psAuto', 'Включать автоматически', 'Когда заряд ниже выбранного порога')}
+    <div class="sec">Порог заряда: <span id="thLbl">${ST.psThreshold}%</span></div>
+    <input type="range" class="range" data-k="psThreshold" min="5" max="50" step="5" value="${ST.psThreshold}">
+    <div class="sec">Состояние</div>
+    <div id="psStatus"></div>`, after: updPower }
+};
+
+function foldersHTML() {
+  return ST.folders.length
+    ? ST.folders.map(f => `<div class="folder"><span class="fe">${f.emoji}</span><span class="fn">${esc(f.name)}</span><button class="del" data-del="${f.id}">🗑</button></div>`).join('')
+    : '<div class="empty" style="padding:24px">Папок пока нет.<br>Создайте первую ниже.</div>';
+}
+
+let curPage = null;
+function renderPage(name) {
+  const p = PAGES[name]; if (!p) return;
+  curPage = name;
+  $('subTitle').textContent = p.title;
+  $('subBody').innerHTML = p.render();
+  if (p.after) p.after();
+  show('v-sub');
+}
+
+/* ---------- Выход ---------- */
+function askLogout() {
+  $('sheet').innerHTML = `<div style="text-align:center;font-size:54px;margin-top:6px">🚪</div>
+    <h2>Выйти из аккаунта?</h2>
+    <div class="lead">Настройки и подарки останутся на этом устройстве</div>
+    <div class="row"><button class="btn ghost" id="lgNo">Отмена</button><button class="btn danger" id="lgYes">Выйти</button></div>`;
+  $('modal').classList.add('on');
+  $('lgNo').onclick = () => $('modal').classList.remove('on');
+  $('lgYes').onclick = () => {
+    $('modal').classList.remove('on');
+    try { localStorage.setItem('liks_session', 'out'); } catch (e) {}
+    $('v-out').classList.add('on');
+  };
+}
+$('loginAgain').onclick = () => {
+  try { localStorage.removeItem('liks_session'); } catch (e) {}
+  $('v-out').classList.remove('on');
+  show('v-settings');
+};
+
+/* ---------- События ---------- */
+$('subBack').onclick = () => { curPage = null; show('v-settings'); };
+
+function onSet(e) {
+  const el = e.target.closest ? e.target.closest('[data-k]') : null;
+  if (!el) return;
+  const isRange = el.type === 'range';
+  if (isRange && e.type === 'change') return;
+  if (!isRange && e.type === 'input') return;
+  const k = el.dataset.k;
+  ST[k] = el.type === 'checkbox' ? el.checked : isRange ? Number(el.value) : el.value;
+  saveST(); applyAll();
+  if (k === 'fontSize') updPreview();
+  if (k === 'psThreshold') $('thLbl').textContent = ST.psThreshold + '%';
+}
+document.addEventListener('input', onSet);
+document.addEventListener('change', onSet);
+document.addEventListener('input', (e) => { if (e.target.id === 'fBio') $('bioCnt').textContent = e.target.value.length; });
+
+document.addEventListener('click', (e) => {
+  const pg = e.target.closest('[data-page]');
+  if (pg) return pg.dataset.page === 'logout' ? askLogout() : renderPage(pg.dataset.page);
+
+  const wp = e.target.closest('[data-wp]');
+  if (wp) { ST.wallpaper = Number(wp.dataset.wp); saveST(); return updPreview(); }
+
+  const del = e.target.closest('[data-del]');
+  if (del) { ST.folders = ST.folders.filter(f => f.id !== del.dataset.del); saveST(); $('fList').innerHTML = foldersHTML(); return; }
+
+  const a = e.target.closest('[data-act]');
+  if (!a) return;
+  const act = a.dataset.act;
+
+  if (act === 'pickPhoto') $('avFile').click();
+  if (act === 'emoji') {
+    ST.avatarPhoto = '';
+    ST.avatar = AVATARS[(AVATARS.indexOf(ST.avatar) + 1) % AVATARS.length];
+    saveST(); updAvatar();
+  }
+  if (act === 'delPhoto') { ST.avatarPhoto = ''; saveST(); updAvatar(); toast('Фото убрано'); }
+  if (act === 'saveAcc') {
+    const u = $('fUser').value.trim().replace(/^@/, '');
+    const h = $('unHint');
+    if (u && !/^[a-zA-Z][a-zA-Z0-9_]{4,31}$/.test(u)) {
+      h.textContent = 'Недопустимое имя: 5–32 символа, латиница, цифры и _, первая — буква';
+      h.classList.add('err'); return;
+    }
+    h.classList.remove('err');
+    ST.name = $('fName').value.trim(); ST.username = u; ST.bio = $('fBio').value.trim();
+    saveST(); updAccountSub(); toast('Сохранено ✓');
+  }
+  if (act === 'testN') testN();
+  if (act === 'addFolder') {
+    const name = $('fNew').value.trim();
+    if (!name) return toast('Введите название');
+    if (ST.folders.length >= 10) return toast('Максимум 10 папок');
+    if (ST.folders.some(f => f.name.toLowerCase() === name.toLowerCase())) return toast('Такая папка уже есть');
+    ST.folders.push({ id: Date.now().toString(36), name, emoji: $('fEmoji').value });
+    saveST(); $('fNew').value = ''; $('fList').innerHTML = foldersHTML();
+  }
+  if (act === 'clearCache' || act === 'clearDrafts') {
+    keysWith(act === 'clearCache' ? 'liks_cache' : 'liks_drafts').forEach(k => localStorage.removeItem(k));
+    $('stCache').textContent = fmt(sumKeys('liks_cache'));
+    $('stDraft').textContent = fmt(sumKeys('liks_drafts'));
+    $('stAll').textContent = fmt(sumKeys('liks_'));
+    toast(act === 'clearCache' ? 'Кэш очищен' : 'Черновики удалены');
+  }
+  if (act === 'resetAll' && confirm('Сбросить все настройки к значениям по умолчанию?')) {
+    ST = Object.assign({}, DEF, { folders: [] });
+    saveST(); applyAll(); renderPage('data'); toast('Настройки сброшены');
+  }
+});
+
+applyAll();
+try { if (localStorage.getItem('liks_session') === 'out') $('v-out').classList.add('on'); } catch (e) {}
+</script>
 </body>
 </html>
