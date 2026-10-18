@@ -482,7 +482,7 @@ const full=u=>((u.name||'')+(u.sn?' '+u.sn:'')).trim();
 const U=()=>users[me.uid]||{};
 /* ---------- роли ---------- */
 const OWNER_UN='ne1iks';
-const OWNER_UID=''; // желательно вставить сюда uid владельца (Firebase → Authentication → Users), тогда имя ne1iks нельзя подделать
+const OWNER_UID='xKmjCwrECZTPVGrD7JTOVF9266Q2'; // желательно вставить сюда uid владельца (Firebase → Authentication → Users), тогда имя ne1iks нельзя подделать
 const isOwner=id=>OWNER_UID?id===OWNER_UID:(users[id]?.username||'')===OWNER_UN;
 const roleOf=id=>isOwner(id)?'owner':users[id]?.role==='admin'?'admin':'';
 const badge=id=>{const r=roleOf(id);return r?el('span','rb '+(r==='owner'?'own':'adm'),r==='owner'?'OWNER':'ADMIN'):null};
