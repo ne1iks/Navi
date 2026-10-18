@@ -105,7 +105,11 @@ http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html')) {
     const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8').replace('<head>', '<head><script>window.USE_SERVER=true</script>');
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); return res.end(html);
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); return res.end(html);
+  }
+  const MIME = { '/sw.js': 'text/javascript', '/manifest.webmanifest': 'application/manifest+json', '/icon.svg': 'image/svg+xml' };
+  if (req.method === 'GET' && MIME[url.pathname]) {
+    try { const d = fs.readFileSync(path.join(__dirname, url.pathname)); res.writeHead(200, { 'Content-Type': MIME[url.pathname], 'Cache-Control': 'no-cache' }); return res.end(d); } catch (e) {}
   }
   let body = ''; req.on('data', c => { body += c; if (body.length > 1e6) req.destroy(); });
   req.on('end', () => {

@@ -1145,7 +1145,7 @@ function renderChats() {
   const ids = ['me'].concat(CH.contacts.map(c => c.id), (CH.rooms || []).map(x => x.id)).filter(id => {
     const c = CH.chats[id];
     if (!peer(id)) return false;
-    if (id !== 'me' && !isRoom(id) && !lastMsg(id) && !drafts[id]) return false;
+    if (id !== 'me' && !SRV && !isRoom(id) && !lastMsg(id) && !drafts[id]) return false;
     if (curFolder !== 'all' && !(c && c.folder === curFolder)) return false;
     if (q) {
       const inName = peer(id).name.toLowerCase().includes(q);
@@ -1154,7 +1154,8 @@ function renderChats() {
       if (!inName && !inMsg) return false;
     }
     return true;
-  }).sort((a, b) => (((CH.chats[b] || {}).pin ? 1 : 0) - ((CH.chats[a] || {}).pin ? 1 : 0)) || lastTs(b) - lastTs(a));
+  })
+  .sort((a, b) => ((b === 'r0') - (a === 'r0')) || (((CH.chats[b] || {}).pin ? 1 : 0) - ((CH.chats[a] || {}).pin ? 1 : 0)) || lastTs(b) - lastTs(a));
 
   $('chatList').innerHTML = ids.map(id => {
     const p = peer(id), m = lastMsg(id);
@@ -1162,7 +1163,7 @@ function renderChats() {
     const mine = !m || id === 'me' || !m.from || m.from === 'me';
     const prev = dr ? `<span class="dr">Черновик:</span> ${esc(oneLine(dr))}`
       : m ? (id === 'me' || !mine ? '' : 'Вы: ') + esc(oneLine(m.text))
-      : 'Сохраняйте здесь заметки для себя';
+      : id === 'me' ? 'Сохраняйте здесь заметки для себя' : isRoom(id) ? 'Сообщений пока нет' : 'Нажмите, чтобы написать';
     return `<div class="crow" data-chat="${id}"><div class="cav" ${avAttr(p, id)}>${avIn(p)}</div>
       <div class="cmain"><div class="cname">${esc(p.name)}</div><div class="cprev">${prev}</div></div>
       <div class="ctime">${(CH.chats[id] || {}).pin ? '📌 ' : ''}${m ? fmtT(m.ts) : ''}${isUnread(id) ? '<br><span class="udot"></span>' : ''}</div></div>`;
@@ -1612,7 +1613,7 @@ document.addEventListener('click', async (e) => {
     else if (k === 'leave' && confirm('Покинуть чат?')) { await api('/rooms/' + curChat + '/leave', 'POST'); close(); curChat = null; await sync(); show('v-chats'); }
   } catch (x) { toast(x.message); }
 });
-if (SRV) { if (TOKEN) startServer().catch(() => {}); else renderAuth(); }
+if (SRV) { if (TOKEN) startServer().catch((e) => toast('Ошибка: ' + e.message)); else renderAuth(); }
 else if (!jget(AK, null)) renderAuth();
 renderChats();
 show('v-chats');

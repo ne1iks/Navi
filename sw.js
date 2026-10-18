@@ -1,6 +1,8 @@
-const C='krug1';
-self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./','index.html','icon.svg'])));self.skipWaiting()});
-self.addEventListener('fetch',e=>{
-  if(e.request.method!=='GET'||new URL(e.request.url).origin!==location.origin)return;
-  e.respondWith(fetch(e.request).then(r=>{const k=r.clone();caches.open(C).then(c=>c.put(e.request,k));return r}).catch(()=>caches.match(e.request)));
-});
+// Старый кэш мешал обновлению: этот воркер чистит кэш, удаляет себя и перезагружает страницу.
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (e) => e.waitUntil(
+  caches.keys().then(k => Promise.all(k.map(x => caches.delete(x))))
+    .then(() => self.registration.unregister())
+    .then(() => self.clients.matchAll())
+    .then(cs => cs.forEach(c => c.navigate(c.url)))
+));
