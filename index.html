@@ -217,6 +217,7 @@
   .rbar { display: none; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 14px; background: var(--bg); border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
   .rbar.on { display: flex; }
   .rbar button { background: none; border: 0; color: var(--text); font-size: 18px; cursor: pointer; }
+  .crow .del, .addrow { display: none !important; }
 </style>
 </head>
 <body>
@@ -1245,7 +1246,7 @@ $('chatMenu').onclick = () => {
     <button class="opt" data-m="pin">${(CH.chats[curChat] || {}).pin ? '📌 Открепить чат' : '📌 Закрепить чат'}</button>
     <button class="opt" data-m="search">🔍 Поиск в чате</button>
     <button class="opt" data-m="clear">🧹 Очистить историю</button>
-    ${isRoom(curChat) ? '<button class="opt" data-nr="add">➕ Добавить друзей</button><button class="opt" data-nr="leave">🚪 Покинуть</button>' : ''}
+    ${isRoom(curChat) ? '<button class="opt" data-nr="mem">👥 Участники</button><button class="opt" data-nr="add">➕ Добавить друзей</button><button class="opt" data-nr="leave">🚪 Покинуть</button>' : ''}
     <button class="opt" data-m="close">Закрыть</button>`;
   $('modal').classList.add('on');
 };
@@ -1259,7 +1260,7 @@ function renderContacts() {
     ? list.map(c => `<div class="crow" data-chat="${c.id}"><div class="cav" ${avAttr(c, c.id)}>${avIn(c)}</div>
         <div class="cmain"><div class="cname">${esc(c.name)}</div><div class="cprev">${c.username ? '@' + esc(c.username) : 'Нажмите, чтобы написать'}</div></div>
         <button class="del" data-cdel="${c.id}">🗑</button></div>`).join('')
-    : `<div class="empty">${CH.contacts.length ? 'Никого не найдено' : 'Контактов пока нет.<br>Добавьте первый выше.'}</div>`);
+    : `<div class="empty">${CH.contacts.length ? 'Никого не найдено' : 'Пока здесь только вы.<br>Пользователи появятся после регистрации.'}</div>`);
 }
 async function addContact() {
   const n = $('cName').value.trim();
@@ -1585,7 +1586,7 @@ document.addEventListener('click', (e) => {
 });
 /* ---------- Группы и каналы ---------- */
 const nrSheet = (h) => { $('sheet').innerHTML = h; $('modal').classList.add('on'); };
-const friendPick = () => CH.contacts.length ? CH.contacts.map(c => `<label class="sw-row"><span class="t">@${esc(c.username)}</span><input type="checkbox" class="sw" value="${c.id}"></label>`).join('') : '<div class="lead">Друзей пока нет — добавьте их во вкладке «Контакты»</div>';
+const friendPick = () => CH.contacts.length ? CH.contacts.map(c => `<label class="sw-row"><span class="t">@${esc(c.username)}</span><input type="checkbox" class="sw" value="${c.id}"></label>`).join('') : '<div class="lead">Других пользователей пока нет</div>';
 const picked = () => [...$('sheet').querySelectorAll('input.sw:checked')].map(i => +i.value);
 $('newRoom').onclick = () => {
   if (!SRV) return toast('Группы и каналы работают при запуске через server.js');
@@ -1602,6 +1603,10 @@ document.addEventListener('click', async (e) => {
       close(); await sync(); openChat(r.id);
     } else if (k === 'j') nrSheet('<h2>Найти канал</h2><input class="search" id="nrHandle" placeholder="@имя_канала"><button class="btn" style="width:100%" data-nr="join">Подписаться</button>');
     else if (k === 'join') { const r = await api('/rooms/join', 'POST', { handle: $('nrHandle').value }); close(); await sync(); openChat(r.id); }
+    else if (k === 'mem') {
+      const d = await api('/rooms/' + curChat + '/members');
+      nrSheet(`<h2>Участники · ${d.members.length}</h2>` + d.members.map(u => `<div class="crow" ${String(u.id) === String(CH.me) ? '' : `data-nr="dm:${u.id}"`}><div class="cav" style="background:${avBg(u.id)}">🙂</div><div class="cmain"><div class="cname">@${esc(u.username)}${u.username === ST.username ? ' (вы)' : ''}</div></div></div>`).join('') + '<button class="opt" data-nr="x">Закрыть</button>');
+    } else if (k.startsWith('dm:')) { close(); openChat(k.slice(3)); }
     else if (k === 'add') nrSheet(`<h2>Добавить</h2>${friendPick()}<button class="btn" style="width:100%;margin-top:12px" data-nr="adds">Добавить</button>`);
     else if (k === 'adds') { await api('/rooms/' + curChat + '/members', 'POST', { ids: picked() }); close(); await sync(); toast('Готово ✓'); }
     else if (k === 'leave' && confirm('Покинуть чат?')) { await api('/rooms/' + curChat + '/leave', 'POST'); close(); curChat = null; await sync(); show('v-chats'); }

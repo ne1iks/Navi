@@ -13,10 +13,7 @@ const roomOf = id => db.rooms.find(r => r.id === id);
 const RX = /^[a-zA-Z][a-zA-Z0-9_]{4,31}$/;
 
 function view(u) {
-  const friends = db.friends.filter(f => f.a == u || f.b == u).map(f => {
-    const o = f.a == u ? f.b : f.a;
-    return { id: o, username: uname(o), status: f.ok ? 'ok' : f.a == u ? 'out' : 'in' };
-  });
+  const friends = db.users.filter(x => x.id != u).map(x => ({ id: x.id, username: x.username, status: 'ok' }));
   const rooms = db.rooms.filter(r => r.members.includes(u)).map(r => ({
     id: r.id, name: r.name, type: r.type, handle: r.handle || '', admin: r.owner == u, n: r.members.length,
     emoji: r.type === 'channel' ? '📢' : '👥'
@@ -35,7 +32,7 @@ const routes = {
     if (db.users.some(x => x.email === email)) return err(res, 'Эта почта уже зарегистрирована');
     if (db.users.some(x => x.username.toLowerCase() === name.toLowerCase())) return err(res, 'Юзернейм занят');
     const salt = crypto.randomBytes(8).toString('hex'), user = { id: db.seq++, email, username: name, salt, h: hash(b.password, salt) };
-    db.users.push(user); return token(res, user);
+    db.users.push(user); joinAll(user.id); return token(res, user);
   },
   'POST /api/login': (b, u, res) => {
     const x = db.users.find(v => v.email === String(b.email || '').trim().toLowerCase());
@@ -70,8 +67,7 @@ const routes = {
       if (!r || !r.members.includes(u)) return err(res, 'Вы не в этом чате', 403);
       if (r.type === 'channel' && r.owner != u) return err(res, 'В канал пишет только автор', 403);
     } else {
-      to = +to; const f = rel(u, to);
-      if (!f || !f.ok) return err(res, 'Сначала станьте друзьями', 403);
+      to = +to; if (!db.users.some(x => x.id === to)) return err(res, 'Пользователь не найден', 404);
     }
     const m = { id: db.seq++, from: u, to, text, ts: Date.now(), fn: uname(u) };
     db.msgs.push(m); save(); J(res, 200, m);
@@ -84,7 +80,7 @@ const routes = {
       if (type !== 'channel' || !RX.test(handle)) return err(res, 'Имя канала: латиница, цифры и _, от 5 символов');
       if (db.rooms.some(r => r.handle === handle)) return err(res, 'Это имя занято');
     }
-    const ms = [...new Set([u, ...(b.members || []).map(Number).filter(id => { const f = rel(u, id); return f && f.ok; })])];
+    const ms = [...new Set([u, ...(b.members || []).map(Number).filter(id => db.users.some(x => x.id === id))])];
     const r = { id: 'r' + db.seq++, type, name, handle, owner: u, members: ms };
     db.rooms.push(r); save(); J(res, 200, { id: r.id });
   },
@@ -99,6 +95,11 @@ const routes = {
 function token(res, user) {
   const t = crypto.randomBytes(24).toString('hex'); db.tokens[t] = user.id; save(); J(res, 200, { token: t });
 }
+
+// Общий чат r0: в нём состоят все пользователи
+function joinAll(id) { const g = roomOf('r0'); if (g && !g.members.includes(id)) g.members.push(id); }
+if (!roomOf('r0')) db.rooms.unshift({ id: 'r0', type: 'group', name: 'Общий чат', handle: '', owner: 0, members: [] });
+db.users.forEach(x => joinAll(x.id)); save();
 
 http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
@@ -119,12 +120,14 @@ http.createServer((req, res) => {
       if (req.method === 'DELETE' && (m = url.pathname.match(/^\/api\/friends\/(\d+)$/))) {
         db.friends = db.friends.filter(f => !((f.a == u && f.b == m[1]) || (f.b == u && f.a == m[1]))); save(); return J(res, 200, { ok: 1 });
       }
-      if (req.method === 'POST' && (m = url.pathname.match(/^\/api\/rooms\/(r\d+)\/(members|leave)$/))) {
+      if ((req.method === 'POST' || req.method === 'GET') && (m = url.pathname.match(/^\/api\/rooms\/(r\d+)\/(members|leave)$/))) {
         const r = roomOf(m[1]); if (!r || !r.members.includes(u)) return err(res, 'Чат не найден', 404);
+        if (req.method === 'GET') return J(res, 200, { members: r.members.map(id => ({ id, username: uname(id) })) });
         if (m[2] === 'members') {
           if (r.type === 'channel' && r.owner != u) return err(res, 'Добавлять может только автор', 403);
-          (b.ids || []).map(Number).forEach(id => { const f = rel(u, id); if (f && f.ok && !r.members.includes(id)) r.members.push(id); });
+          (b.ids || []).map(Number).forEach(id => { if (db.users.some(x => x.id === id) && !r.members.includes(id)) r.members.push(id); });
         } else {
+          if (r.id === 'r0') return err(res, 'Из общего чата выйти нельзя');
           r.members = r.members.filter(x => x != u);
           if (!r.members.length) db.rooms = db.rooms.filter(x => x !== r); else if (r.owner == u) r.owner = r.members[0];
         }
