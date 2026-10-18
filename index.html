@@ -166,6 +166,54 @@
   html[data-theme=light] input.sw { background: #c3ccd5; }
   html[data-theme=light] input.sw:checked { background: var(--accent); }
   html[data-anim=off] *, html[data-psave=on] * { animation: none !important; transition: none !important; }
+
+  /* ---------- Чаты / контакты / профиль ---------- */
+  .search { width: 100%; background: var(--card); border: 1px solid transparent; border-radius: 12px; color: var(--text); font-size: 16px; padding: 11px 14px; outline: none; margin: 4px 0 10px; font-family: inherit; }
+  .search:focus { border-color: var(--accent); }
+  .ftabs { display: flex; gap: 8px; overflow-x: auto; padding: 0 16px 10px; }
+  .ftabs button { flex: 0 0 auto; border: 0; border-radius: 18px; padding: 7px 14px; background: var(--card); color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .ftabs button.on { background: var(--accent); color: #06231a; }
+  .crow { display: flex; align-items: center; gap: 12px; padding: 10px 0; cursor: pointer; }
+  .crow:active { opacity: .6; }
+  .cav { flex: 0 0 52px; width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; }
+  .cmain { flex: 1; min-width: 0; }
+  .cname { font-weight: 700; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cprev { font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .cprev .dr { color: #ff6b6b; }
+  .ctime { font-size: 12px; color: var(--muted); align-self: flex-start; margin-top: 4px; }
+  .crow .del { background: none; border: 0; color: #ff6b6b; font-size: 20px; cursor: pointer; padding: 6px 8px; }
+  #v-chat.active { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+  .chat-top { display: flex; align-items: center; gap: 10px; padding: 10px 8px; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .chat-top .cav { flex: 0 0 40px; width: 40px; height: 40px; font-size: 20px; }
+  .chat-top .cname { flex: 1; }
+  .msgs { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .msgs .bub { white-space: pre-wrap; word-break: break-word; }
+  .msgs .bub small { display: block; text-align: right; font-size: 11px; opacity: .75; margin-top: 2px; }
+  .msgs .note { background: rgba(0,0,0,.35); color: #fff; border-radius: 12px; padding: 8px 12px; align-self: center; max-width: 90%; }
+  .composer { display: flex; gap: 8px; align-items: flex-end; padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); background: var(--bg); border-top: 1px solid var(--line); }
+  .composer textarea { flex: 1; resize: none; max-height: 120px; background: var(--card); border: 0; border-radius: 20px; color: var(--text); font-size: 16px; padding: 10px 14px; outline: none; font-family: inherit; }
+  .send { flex: 0 0 42px; width: 42px; height: 42px; border-radius: 50%; border: 0; background: var(--accent); color: #06231a; font-size: 18px; cursor: pointer; }
+  body.inchat { padding-bottom: 0; }
+  body.inchat nav { display: none; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0; }
+  .stile { background: var(--card); border-radius: 16px; padding: 14px; text-align: center; }
+  .stile b { display: block; font-size: 24px; }
+  .stile span { font-size: 13px; color: var(--muted); }
+  .center { text-align: center; }
+  .opt { display: block; width: 100%; text-align: left; background: var(--card); border: 0; border-radius: 12px; color: var(--text); font-size: 16px; padding: 14px; margin-bottom: 8px; cursor: pointer; }
+
+  .toast { z-index: 60; }
+  #v-auth { position: fixed; inset: 0; background: var(--bg); z-index: 50; display: none; overflow: auto; padding: 40px 20px; }
+  #v-auth.on { display: block; }
+  #v-auth .box { max-width: 380px; margin: 0 auto; }
+  .field input[type=password], .field input[type=email], .field input[type=tel] { width: 100%; background: var(--card); border: 1px solid transparent; border-radius: 12px; color: var(--text); font-size: 16px; padding: 12px; outline: none; font-family: inherit; }
+  .field input[type=password]:focus, .field input[type=email]:focus, .field input[type=tel]:focus { border-color: var(--accent); }
+  .bub .rp { border-left: 3px solid var(--accent); padding: 2px 8px; margin-bottom: 4px; font-size: 13px; opacity: .85; }
+  .bub .rx { display: flex; gap: 4px; margin-top: 4px; }
+  .bub .rx i { font-style: normal; font-size: 14px; background: rgba(0,0,0,.18); border-radius: 10px; padding: 1px 6px; }
+  .rbar { display: none; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 14px; background: var(--bg); border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+  .rbar.on { display: flex; }
+  .rbar button { background: none; border: 0; color: var(--text); font-size: 18px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -211,6 +259,52 @@
   <p class="note">Подарки — это коллекционные цифровые предметы внутри мессенджера. Каждый уникален: свой номер, фон и узор.</p>
 </section>
 
+<!-- ============ ЧАТЫ ============ -->
+<section class="view" id="v-chats">
+  <h1>Чаты</h1>
+  <div class="body" style="padding-bottom:0">
+    <input class="search" id="chatSearch" type="text" placeholder="Поиск по чатам">
+  </div>
+  <div class="ftabs" id="chatTabs"></div>
+  <div class="body" id="chatList"></div>
+</section>
+
+<!-- ============ КОНТАКТЫ ============ -->
+<section class="view" id="v-contacts">
+  <h1>Контакты</h1>
+  <div class="body">
+    <input class="search" id="contSearch" type="text" placeholder="Поиск по контактам">
+    <div class="addrow">
+      <select class="sel" id="cEmoji"><option>🙂</option><option>😎</option><option>🦊</option><option>🐼</option><option>🐯</option><option>🦄</option><option>🐲</option><option>🚀</option></select>
+      <input type="text" id="cName" maxlength="40" placeholder="Имя нового контакта">
+      <button class="btn" data-cadd="1">＋</button>
+    </div>
+    <div id="contList" style="margin-top:10px"></div>
+  </div>
+</section>
+
+<!-- ============ ПРОФИЛЬ ============ -->
+<section class="view" id="v-profile">
+  <h1>Профиль</h1>
+  <div class="body" id="profBody"></div>
+</section>
+
+<!-- ============ ДИАЛОГ ============ -->
+<section class="view" id="v-chat">
+  <div class="chat-top">
+    <button class="back" id="chatBack">‹</button>
+    <div class="cav" id="chatAv"></div>
+    <div class="cname" id="chatName"></div>
+    <button class="back" id="chatMenu">⋮</button>
+  </div>
+  <div class="msgs" id="msgs"></div>
+  <div class="rbar" id="rbar"></div>
+  <div class="composer">
+    <textarea id="msgIn" rows="1" placeholder="Сообщение"></textarea>
+    <button class="send" id="sendBtn">➤</button>
+  </div>
+</section>
+
 <!-- ============ ПОДСТРАНИЦЫ НАСТРОЕК ============ -->
 <section class="view" id="v-sub">
   <div class="topbar"><button class="back" id="subBack">‹</button><h1 id="subTitle"></h1></div>
@@ -224,6 +318,8 @@
   <p class="sub">Настройки и подарки сохранены на этом устройстве</p>
   <button class="btn" id="loginAgain">Войти снова</button>
 </div>
+
+<div id="v-auth"></div>
 
 <!-- Модалка подарка -->
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
@@ -412,13 +508,16 @@ function toast(t) {
 }
 
 /* ===================== СОБЫТИЯ ===================== */
+const TABV = { 'v-chats': 0, 'v-contacts': 1, 'v-settings': 2, 'v-sub': 2, 'v-gifts': 2, 'v-profile': 3 };
 function show(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   $(id).classList.add('active');
+  document.querySelectorAll('nav a').forEach((a, i) => a.classList.toggle('active', i === TABV[id]));
+  document.body.classList.toggle('inchat', id === 'v-chat');
   window.scrollTo(0, 0);
 }
 $('openGifts').onclick = () => show('v-gifts');
-$('backBtn').onclick = () => show('v-settings');
+$('backBtn').onclick = () => { const f = window._giftsFrom || 'v-settings'; window._giftsFrom = null; show(f); };
 
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tabs button').forEach(x => x.classList.remove('on'));
@@ -552,6 +651,7 @@ async function setPhoto(f) {
     ST.avatarPhoto = c.toDataURL('image/jpeg', 0.85);
     if (!saveST()) { ST.avatarPhoto = prev; return toast('Не хватило памяти браузера'); }
     updAvatar(); toast('Фото установлено ✓');
+    pushProfile().catch(x => toast(cloudErr(x)));
   } catch (e) {
     toast('Не удалось открыть это изображение');
   }
@@ -608,6 +708,7 @@ const PAGES = {
       <div class="hint" id="unHint">От 5 до 32 символов: латиница, цифры и _, начинается с буквы</div></div>
     <div class="field"><label>О себе</label><textarea id="fBio" rows="3" maxlength="70" placeholder="Пара слов о вас">${esc(ST.bio)}</textarea>
       <div class="hint"><span id="bioCnt">${ST.bio.length}</span> / 70</div></div>
+    ${cloudCfg ? (inCloud() ? emailBlock() : '') : '<div class="hint">Режим без сервера: данные хранятся только в этом браузере. Чтобы включить вход по почте и общение между людьми, впишите данные Firebase в блок FIREBASE_CONFIG в начале файла.</div>'}
     <button class="btn full" data-act="saveAcc">Сохранить</button>`, after: () => updAvatar() },
 
   chats: { title: 'Настройки чатов', render: () => `
@@ -696,8 +797,9 @@ function askLogout() {
   $('lgNo').onclick = () => $('modal').classList.remove('on');
   $('lgYes').onclick = () => {
     $('modal').classList.remove('on');
-    try { localStorage.setItem('liks_session', 'out'); } catch (e) {}
-    $('v-out').classList.add('on');
+    if (cloudCfg) return Cloud.signOut();
+    try { localStorage.removeItem(AK); } catch (e) {}
+    renderAuth();
   };
 }
 $('loginAgain').onclick = () => {
@@ -707,7 +809,7 @@ $('loginAgain').onclick = () => {
 };
 
 /* ---------- События ---------- */
-$('subBack').onclick = () => { curPage = null; show('v-settings'); };
+$('subBack').onclick = () => { curPage = null; const f = window._subFrom || 'v-settings'; window._subFrom = null; if (f === 'v-profile') renderProfile(); show(f); };
 
 function onSet(e) {
   const el = e.target.closest ? e.target.closest('[data-k]') : null;
@@ -743,9 +845,13 @@ document.addEventListener('click', (e) => {
   if (act === 'emoji') {
     ST.avatarPhoto = '';
     ST.avatar = AVATARS[(AVATARS.indexOf(ST.avatar) + 1) % AVATARS.length];
-    saveST(); updAvatar();
+    saveST(); updAvatar(); pushProfile().catch(x => toast(cloudErr(x)));
   }
-  if (act === 'delPhoto') { ST.avatarPhoto = ''; saveST(); updAvatar(); toast('Фото убрано'); }
+  if (act === 'delPhoto') { ST.avatarPhoto = ''; saveST(); updAvatar(); toast('Фото убрано'); pushProfile().catch(x => toast(cloudErr(x))); }
+  if (act === 'resendVerify') {
+    e.preventDefault();
+    Cloud.resendVerify().then(() => toast('Письмо отправлено ✓')).catch(x => toast(cloudErr(x)));
+  }
   if (act === 'saveAcc') {
     const u = $('fUser').value.trim().replace(/^@/, '');
     const h = $('unHint');
@@ -754,6 +860,10 @@ document.addEventListener('click', (e) => {
       h.classList.add('err'); return;
     }
     h.classList.remove('err');
+    if (cloudCfg) {
+      if (!u) { h.textContent = 'Укажите имя пользователя — по нему вас смогут найти'; h.classList.add('err'); return; }
+      saveAccountCloud(u, h); return;
+    }
     ST.name = $('fName').value.trim(); ST.username = u; ST.bio = $('fBio').value.trim();
     saveST(); updAccountSub(); toast('Сохранено ✓');
   }
@@ -780,7 +890,419 @@ document.addEventListener('click', (e) => {
 });
 
 applyAll();
-try { if (localStorage.getItem('liks_session') === 'out') $('v-out').classList.add('on'); } catch (e) {}
+/* ===================== ЧАТЫ / КОНТАКТЫ / ПРОФИЛЬ ===================== */
+const CK = 'liks_chat_v1';
+let CH;
+try { CH = JSON.parse(localStorage.getItem(CK)); } catch (e) { CH = null; }
+if (!CH || !CH.chats || !CH.contacts) CH = { contacts: [], chats: {} };
+
+/* Облачный режим включается, когда в FIREBASE_CONFIG вписан apiKey */
+const cloudCfg = !!(window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.apiKey);
+let CLOUD_ON = false, CLOUD_UID = '', CLOUD_EMAIL = '', CLOUD_VERIFIED = false;
+let META = {}, cloudContacts = [], chatPeers = {}, chatsInit = false, setupShown = false;
+const inCloud = () => cloudCfg && CLOUD_ON;
+if (cloudCfg) CH = { contacts: [], chats: {} };   // в облаке локальные данные не показываем
+
+const saveCH = () => {
+  try {
+    if (cloudCfg) {   // в облаке локально храним только папки, «очистку» и «прочитано»
+      if (!CLOUD_UID) return true;
+      const meta = {};
+      Object.keys(CH.chats).forEach(id => {
+        const c = CH.chats[id];
+        if (c.folder || c.clearedAt || c.readAt) meta[id] = { f: c.folder || '', c: c.clearedAt || 0, r: c.readAt || 0 };
+      });
+      META = meta;
+      localStorage.setItem('liks_cmeta_' + CLOUD_UID, JSON.stringify(meta));
+      return true;
+    }
+    localStorage.setItem(CK, JSON.stringify(CH));
+    return true;
+  } catch (e) { return false; }
+};
+
+const FAV = { id: 'me', name: 'Избранное', emoji: '📌' };
+const AVBG = ['#2f97f0,#4fd1a5', '#f5a623,#ef5350', '#a45be0,#3a6fe0', '#3cb54a,#2aa8e0', '#ff5e9c,#ff8a4c', '#1fbf8f,#0b4a3b'];
+const avBg = (id) => { let h = 0; for (const c of String(id)) h += c.charCodeAt(0); return `linear-gradient(135deg,${AVBG[h % AVBG.length]})`; };
+const peer = (id) => id === 'me' ? FAV : CH.contacts.find(c => c.id === id);
+const chatOf = (id) => CH.chats[id] || (CH.chats[id] = cloudCfg
+  ? { msgs: [], folder: (META[id] || {}).f || '', clearedAt: (META[id] || {}).c || 0, readAt: (META[id] || {}).r || 0 }
+  : { msgs: [], folder: '' });
+const lastMsg = (id) => {
+  const c = CH.chats[id]; if (!c) return null;
+  const m = c.msgs.length ? c.msgs[c.msgs.length - 1] : (c.last || null);
+  return m && m.ts > (c.clearedAt || 0) ? m : null;
+};
+const lastTs = (id) => { const m = lastMsg(id); return m ? m.ts : 0; };
+const avAttr = (p, id) => p.photo ? `style="background-image:url('${p.photo}');background-size:cover;background-position:center"` : `style="background:${avBg(id)}"`;
+const avIn = (p) => p.photo ? '' : p.emoji;
+const isUnread = (id) => { const c = CH.chats[id], m = lastMsg(id); return !!(m && m.from && m.from !== 'me' && m.ts > ((c && c.readAt) || 0)); };
+const oneLine = (t) => t.replace(/\s+/g, ' ');
+const fmtT = (ts) => {
+  const d = new Date(ts), n = new Date();
+  return d.toDateString() === n.toDateString()
+    ? d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+};
+
+/* Черновики (учитываются в «Данные и память») */
+const DK = 'liks_drafts';
+const getDrafts = () => { try { return JSON.parse(localStorage.getItem(DK)) || {}; } catch (e) { return {}; } };
+const setDraft = (id, t) => {
+  const d = getDrafts();
+  if (t) d[id] = t; else delete d[id];
+  try { if (Object.keys(d).length) localStorage.setItem(DK, JSON.stringify(d)); else localStorage.removeItem(DK); } catch (e) {}
+};
+
+let curFolder = 'all', curChat = null;
+
+/* ---------- Чаты ---------- */
+function renderChats() {
+  const q = ($('chatSearch').value || '').trim().toLowerCase();
+  if (curFolder !== 'all' && !ST.folders.some(f => f.id === curFolder)) curFolder = 'all';
+  const tabs = $('chatTabs');
+  tabs.style.display = ST.folders.length ? 'flex' : 'none';
+  tabs.innerHTML = `<button class="${curFolder === 'all' ? 'on' : ''}" data-ftab="all">Все</button>` +
+    ST.folders.map(f => `<button class="${curFolder === f.id ? 'on' : ''}" data-ftab="${f.id}">${f.emoji} ${esc(f.name)}</button>`).join('');
+
+  const drafts = getDrafts();
+  const ids = ['me'].concat(CH.contacts.map(c => c.id)).filter(id => {
+    const c = CH.chats[id];
+    if (!peer(id)) return false;
+    if (id !== 'me' && !lastMsg(id) && !drafts[id]) return false;
+    if (curFolder !== 'all' && !(c && c.folder === curFolder)) return false;
+    if (q) {
+      const inName = peer(id).name.toLowerCase().includes(q);
+      const lm = lastMsg(id);
+      const inMsg = (c && c.msgs.some(m => m.text.toLowerCase().includes(q))) || (lm && lm.text.toLowerCase().includes(q));
+      if (!inName && !inMsg) return false;
+    }
+    return true;
+  }).sort((a, b) => (((CH.chats[b] || {}).pin ? 1 : 0) - ((CH.chats[a] || {}).pin ? 1 : 0)) || lastTs(b) - lastTs(a));
+
+  $('chatList').innerHTML = ids.map(id => {
+    const p = peer(id), m = lastMsg(id);
+    const dr = drafts[id] && curChat !== id ? drafts[id] : '';
+    const mine = !m || id === 'me' || !m.from || m.from === 'me';
+    const prev = dr ? `<span class="dr">Черновик:</span> ${esc(oneLine(dr))}`
+      : m ? (id === 'me' || !mine ? '' : 'Вы: ') + esc(oneLine(m.text))
+      : 'Сохраняйте здесь заметки для себя';
+    return `<div class="crow" data-chat="${id}"><div class="cav" ${avAttr(p, id)}>${avIn(p)}</div>
+      <div class="cmain"><div class="cname">${esc(p.name)}</div><div class="cprev">${prev}</div></div>
+      <div class="ctime">${(CH.chats[id] || {}).pin ? '📌 ' : ''}${m ? fmtT(m.ts) : ''}${isUnread(id) ? '<br><span class="udot"></span>' : ''}</div></div>`;
+  }).join('') + (CH.contacts.length ? '' : '<div class="empty">Чтобы начать диалог, откройте «Контакты» и добавьте человека</div>');
+}
+
+function renderMsgs() {
+  const c = CH.chats[curChat], ms = c ? c.msgs : [];
+  const note = (curChat !== 'me' && !cloudCfg)
+    ? '<div class="bub note" style="font-size:12px">Сообщения хранятся на этом устройстве. Доставка другим людям появится после подключения сервера.</div>' : '';
+  $('msgs').innerHTML = note + (ms.length
+    ? ms.map((m, i) => {
+        if (chatQ && !m.text.toLowerCase().includes(chatQ)) return '';
+        const inn = m.from && m.from !== 'me';
+        const st = inn ? '' : (m.read || curChat === 'me' ? ' ✓✓' : ' ✓');
+        return `<div class="bub ${inn ? 'in' : 'out'}" data-mi="${i}" style="font-size:${ST.fontSize}px">${m.reply ? `<div class="rp">${esc(m.reply.slice(0, 80))}</div>` : ''}${esc(m.text)}${m.rx && m.rx.length ? `<div class="rx">${m.rx.map(x => `<i>${x}</i>`).join('')}</div>` : ''}<small>${m.fwd ? '↪ ' : ''}${m.edited ? 'изм. ' : ''}${fmtT(m.ts)}${st}</small></div>`;
+      }).join('')
+    : '<div class="empty" style="color:#fff">Сообщений пока нет.<br>Напишите первое.</div>');
+}
+const scrollEnd = () => { const m = $('msgs'); m.scrollTop = m.scrollHeight; };
+const autoGrow = () => { const i = $('msgIn'); i.style.height = 'auto'; i.style.height = Math.min(i.scrollHeight, 120) + 'px'; };
+
+function openChat(id) {
+  const p = peer(id); if (!p) return;
+  curChat = id; chatQ = ''; replyTo = null; editIdx = null; setRbar();
+  const av = $('chatAv');
+  av.textContent = p.photo ? '' : p.emoji;
+  av.style.background = p.photo ? `url('${p.photo}') center/cover` : avBg(id);
+  $('chatName').textContent = p.name;
+  $('msgs').style.background = WALLS[ST.wallpaper];
+  renderMsgs();
+  $('msgIn').value = getDrafts()[id] || '';
+  show('v-chat'); autoGrow(); scrollEnd();
+  if (inCloud()) openCloudChat(id);
+}
+
+async function sendMsg() {
+  const inp = $('msgIn'), t = inp.value.trim();
+  if (!t || !curChat) return;
+  if (cloudCfg) {
+    if (!inCloud()) return;
+    inp.value = ''; setDraft(curChat, ''); autoGrow();
+    try { await Cloud.send(curChat, t); }
+    catch (e) { inp.value = t; return toast(cloudErr(e)); }
+    Gifts.addProgress('t1', 1);
+    Gifts.addProgress('t6', 1);
+    return;
+  }
+  const c = chatOf(curChat);
+  if (editIdx != null) {
+    if (c.msgs[editIdx]) { c.msgs[editIdx].text = t; c.msgs[editIdx].edited = 1; }
+    editIdx = null; setRbar(); saveCH(); inp.value = ''; setDraft(curChat, ''); autoGrow(); renderMsgs(); return;
+  }
+  c.msgs.push({ text: t, ts: Date.now(), reply: replyTo || undefined });
+  replyTo = null; setRbar();
+  if (!saveCH()) { c.msgs.pop(); return toast('Не хватило памяти браузера'); }
+  inp.value = ''; setDraft(curChat, ''); autoGrow();
+  renderMsgs(); scrollEnd();
+  Gifts.addProgress('t1', 1);      // задание «Болтун»
+  Gifts.addProgress('t6', 1);      // задание «Легенда»
+}
+
+$('sendBtn').onclick = sendMsg;
+$('msgIn').addEventListener('input', () => { autoGrow(); if (curChat) setDraft(curChat, $('msgIn').value); });
+$('msgIn').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); } });
+$('chatBack').onclick = () => { if (inCloud()) Cloud.closeChat(); curChat = null; renderChats(); show('v-chats'); };
+$('chatSearch').addEventListener('input', renderChats);
+$('contSearch').addEventListener('input', () => renderContacts());
+
+$('chatMenu').onclick = () => {
+  if (!curChat) return;
+  $('sheet').innerHTML = `<h2>${esc(peer(curChat).name)}</h2><div class="lead">Действия с чатом</div>
+    ${ST.folders.length ? '<button class="opt" data-m="folder">📁 Переместить в папку</button>' : ''}
+    <button class="opt" data-m="pin">${(CH.chats[curChat] || {}).pin ? '📌 Открепить чат' : '📌 Закрепить чат'}</button>
+    <button class="opt" data-m="search">🔍 Поиск в чате</button>
+    <button class="opt" data-m="clear">🧹 Очистить историю</button>
+    <button class="opt" data-m="close">Закрыть</button>`;
+  $('modal').classList.add('on');
+};
+
+/* ---------- Контакты ---------- */
+function renderContacts() {
+  const q = ($('contSearch').value || '').trim().toLowerCase();
+  const list = CH.contacts.filter(c => !c.temp && (!q || c.name.toLowerCase().includes(q)))
+    .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+  $('contList').innerHTML = list.length
+    ? list.map(c => `<div class="crow" data-chat="${c.id}"><div class="cav" ${avAttr(c, c.id)}>${avIn(c)}</div>
+        <div class="cmain"><div class="cname">${esc(c.name)}</div><div class="cprev">${c.username ? '@' + esc(c.username) : 'Нажмите, чтобы написать'}</div></div>
+        <button class="del" data-cdel="${c.id}">🗑</button></div>`).join('')
+    : `<div class="empty">${CH.contacts.length ? 'Никого не найдено' : 'Контактов пока нет.<br>Добавьте первый выше.'}</div>`;
+}
+async function addContact() {
+  const n = $('cName').value.trim();
+  if (!n) return toast(cloudCfg ? 'Введите @имя_пользователя' : 'Введите имя');
+  if (cloudCfg) {
+    if (!inCloud()) return;
+    try { await Cloud.addContact(n.replace(/^@/, '')); $('cName').value = ''; toast('Контакт добавлен ✓'); }
+    catch (e) { toast(cloudErr(e)); }
+    return;
+  }
+  if (CH.contacts.length >= 100) return toast('Максимум 100 контактов');
+  if (CH.contacts.some(c => c.name.toLowerCase() === n.toLowerCase())) return toast('Такой контакт уже есть');
+  CH.contacts.push({ id: Date.now().toString(36) + rnd(1000), name: n, emoji: $('cEmoji').value });
+  if (!saveCH()) { CH.contacts.pop(); return toast('Не хватило памяти браузера'); }
+  $('cName').value = ''; renderContacts(); toast('Контакт добавлен ✓');
+}
+
+/* ---------- Профиль ---------- */
+function renderProfile() {
+  const ph = ST.avatarPhoto;
+  const msgs = cloudCfg ? Object.keys(CH.chats).filter(id => lastMsg(id)).length : Object.values(CH.chats).reduce((a, c) => a + c.msgs.length, 0);
+  $('profBody').innerHTML = `
+    <div class="avatar" style="${ph ? `background-image:url('${ph}')` : ''}">${ph ? '' : ST.avatar}</div>
+    <h2 class="center">${esc(ST.name || 'Без имени')}</h2>
+    <div class="sub center">${ST.username ? '@' + esc(ST.username) : 'Имя пользователя не задано'}</div>
+    ${ST.bio ? `<p class="center" style="margin-top:10px">${esc(ST.bio)}</p>` : ''}
+    <div class="stats">
+      <div class="stile"><b>${S.gifts.length}</b><span>Подарков</span></div>
+      <div class="stile"><b>${msgs}</b><span>${cloudCfg ? 'Чатов' : 'Сообщений'}</span></div>
+      <div class="stile"><b>${CH.contacts.length}</b><span>Контактов</span></div>
+      <div class="stile"><b>${ST.folders.length}</b><span>Папок</span></div>
+    </div>
+    <button class="btn full" data-go="account">✏️ Редактировать профиль</button>
+    <button class="btn ghost full" data-go="gifts">⭐ Задания и подарки</button>
+    <a class="btn ghost full" style="display:block;text-align:center;text-decoration:none" href="https://donatty.com/dekiartv6t" target="_blank" rel="noopener">💖 Пожертвовать</a>`;
+}
+
+/* ---------- Нижняя навигация ---------- */
+function goTab(t) {
+  window._subFrom = null; window._giftsFrom = null;
+  if (t === 'chats') { renderChats(); show('v-chats'); }
+  else if (t === 'contacts') { renderContacts(); show('v-contacts'); }
+  else if (t === 'profile') { renderProfile(); show('v-profile'); }
+  else show('v-settings');
+}
+document.querySelectorAll('nav a').forEach((a, i) => a.addEventListener('click', (ev) => {
+  ev.preventDefault();
+  goTab(['chats', 'contacts', 'settings', 'profile'][i]);
+}));
+
+document.addEventListener('click', (e) => {
+  const ft = e.target.closest('[data-ftab]');
+  if (ft) { curFolder = ft.dataset.ftab; return renderChats(); }
+
+  const cd = e.target.closest('[data-cdel]');
+  if (cd) {
+    if (cloudCfg) {
+      if (confirm('Убрать из контактов? Переписка останется в чатах.')) Cloud.removeContact(cd.dataset.cdel).catch(x => toast(cloudErr(x)));
+    } else if (confirm('Удалить контакт вместе с перепиской?')) {
+      const id = cd.dataset.cdel;
+      CH.contacts = CH.contacts.filter(c => c.id !== id);
+      delete CH.chats[id]; setDraft(id, ''); saveCH(); renderContacts();
+    }
+    return;
+  }
+  const ch = e.target.closest('[data-chat]');
+  if (ch) return openChat(ch.dataset.chat);
+  if (e.target.closest('[data-cadd]')) return addContact();
+
+  const go = e.target.closest('[data-go]');
+  if (go) {
+    if (go.dataset.go === 'account') { window._subFrom = 'v-profile'; renderPage('account'); }
+    else { window._giftsFrom = 'v-profile'; show('v-gifts'); }
+    return;
+  }
+
+  const m = e.target.closest('[data-m]');
+  if (m && curChat) {
+    const act = m.dataset.m;
+    if (act === 'close') $('modal').classList.remove('on');
+    if (act === 'clear' && confirm(cloudCfg ? 'Скрыть историю у вас? У собеседника она останется.' : 'Очистить историю этого чата?')) {
+      const cc = chatOf(curChat);
+      if (cloudCfg) cc.clearedAt = Math.max(Date.now(), lastTs(curChat));
+      cc.msgs = [];
+      saveCH(); renderMsgs(); $('modal').classList.remove('on');
+    }
+    if (act === 'pin') { const cc = chatOf(curChat); cc.pin = !cc.pin; saveCH(); $('modal').classList.remove('on'); toast(cc.pin ? 'Закреплено ✓' : 'Откреплено'); }
+    if (act === 'search') { $('modal').classList.remove('on'); chatQ = (prompt('Найти в чате (пусто — сбросить)') || '').trim().toLowerCase(); renderMsgs(); }
+    if (act === 'folder') {
+      $('sheet').innerHTML = `<h2>Папка</h2><div class="lead">Куда переместить чат?</div>
+        <button class="opt" data-setf="">Без папки</button>` +
+        ST.folders.map(f => `<button class="opt" data-setf="${f.id}">${f.emoji} ${esc(f.name)}</button>`).join('');
+    }
+    return;
+  }
+  const sf = e.target.closest('[data-setf]');
+  if (sf && curChat) {
+    chatOf(curChat).folder = sf.dataset.setf; saveCH();
+    $('modal').classList.remove('on'); toast('Чат перемещён ✓');
+  }
+});
+
+
+/* ---------- Действия с сообщениями ---------- */
+let replyTo = null, editIdx = null, selMi = -1, chatQ = '';
+function setRbar() {
+  const b = $('rbar'), on = replyTo || editIdx != null;
+  b.classList.toggle('on', !!on);
+  b.innerHTML = on ? `<span>${editIdx != null ? '✏️ Изменение сообщения' : '↩️ ' + esc(replyTo.slice(0, 60))}</span><button data-rx-cancel="1">✕</button>` : '';
+}
+$('msgs').addEventListener('click', (e) => {
+  const b = e.target.closest('.bub[data-mi]'); if (!b) return;
+  if (cloudCfg) return toast('В облачном режиме пока недоступно');
+  selMi = +b.dataset.mi;
+  const m = CH.chats[curChat].msgs[selMi]; if (!m) return;
+  const mine = !m.from || m.from === 'me';
+  $('sheet').innerHTML = `<div class="row" style="justify-content:space-around;font-size:30px;margin:6px 0 14px">${['👍', '❤️', '🔥', '😂', '😮'].map(x => `<span data-rx="${x}" style="cursor:pointer">${x}</span>`).join('')}</div>
+    <button class="opt" data-ma="reply">↩️ Ответить</button>
+    <button class="opt" data-ma="copy">📋 Копировать</button>
+    <button class="opt" data-ma="fwd">↪️ Переслать</button>
+    ${mine ? '<button class="opt" data-ma="edit">✏️ Изменить</button>' : ''}
+    <button class="opt" data-ma="del">🗑 Удалить</button>`;
+  $('modal').classList.add('on');
+});
+document.addEventListener('click', (e) => {
+  const t = e.target, c = curChat && CH.chats[curChat], m = c && c.msgs[selMi];
+  const close = () => $('modal').classList.remove('on');
+  if (t.closest('[data-rx-cancel]')) { replyTo = null; editIdx = null; $('msgIn').value = ''; autoGrow(); setRbar(); return; }
+  const rx = t.closest('[data-rx]');
+  if (rx && m) { m.rx = (m.rx && m.rx[0] === rx.dataset.rx) ? [] : [rx.dataset.rx]; saveCH(); renderMsgs(); return close(); }
+  const fw = t.closest('[data-fw]');
+  if (fw && m) { chatOf(fw.dataset.fw).msgs.push({ text: m.text, ts: Date.now(), fwd: 1 }); saveCH(); close(); return toast('Переслано ✓'); }
+  const a = t.closest('[data-ma]'); if (!a || !m) return;
+  const k = a.dataset.ma;
+  if (k === 'reply') { replyTo = m.text; editIdx = null; setRbar(); close(); $('msgIn').focus(); }
+  if (k === 'copy') { try { navigator.clipboard.writeText(m.text); } catch (x) {} close(); toast('Скопировано ✓'); }
+  if (k === 'edit') { editIdx = selMi; replyTo = null; $('msgIn').value = m.text; autoGrow(); setRbar(); close(); $('msgIn').focus(); }
+  if (k === 'del') { c.msgs.splice(selMi, 1); saveCH(); renderMsgs(); close(); }
+  if (k === 'fwd') $('sheet').innerHTML = '<h2>Переслать</h2>' + ['me'].concat(CH.contacts.map(x => x.id)).map(id => `<button class="opt" data-fw="${id}">${peer(id).emoji} ${esc(peer(id).name)}</button>`).join('');
+});
+
+/* ---------- Вход: почта + пароль, телефон + SMS ----------
+   SMS нельзя отправить из браузера без сервера. Чтобы включить настоящие SMS,
+   задайте window.SMS_API = { send: 'https://ваш-сервер/sms/send', verify: 'https://ваш-сервер/sms/verify' }
+   (POST JSON: {phone} и {phone, code}; ответ 200 = успех). Без этого работает демо: код показывается на экране. */
+const UK = 'liks_users', AK = 'liks_auth';
+const jget = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } };
+const jset = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+async function hash(p, salt) {
+  if (!(window.crypto && crypto.subtle)) return btoa(unescape(encodeURIComponent(salt + p)));
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(salt + p));
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+const normPhone = (v) => { let d = v.replace(/\D/g, ''); if (d.length === 11 && d[0] === '8') d = '7' + d.slice(1); return d.length >= 10 && d.length <= 15 ? '+' + d : null; };
+let authTab = 'email', authMode = 'in', smsPending = null;
+
+function renderAuth() {
+  const em = authTab === 'email', reg = authMode === 'up'; let f;
+  if (em) f = `<div class="field"><label>Почта</label><input id="aEmail" type="email" autocomplete="email" placeholder="name@mail.ru"></div>
+    <div class="field"><label>Пароль${reg ? ' (от 6 символов)' : ''}</label><input id="aPass" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}"></div>
+    ${reg ? '<div class="field"><label>Повторите пароль</label><input id="aPass2" type="password" autocomplete="new-password"></div>' : ''}
+    <button class="btn full" id="aGo">${reg ? 'Создать аккаунт' : 'Войти'}</button>
+    <button class="btn ghost full" id="aSw" style="margin-top:8px">${reg ? 'Уже есть аккаунт' : 'Регистрация'}</button>`;
+  else if (!smsPending) f = `<div class="field"><label>Номер телефона</label><input id="aPhone" type="tel" autocomplete="tel" placeholder="+7 900 123-45-67"></div>
+    <button class="btn full" id="pGo">Получить код по SMS</button>`;
+  else f = `<div class="lead" style="text-align:center;color:var(--muted)">Код отправлен на ${esc(smsPending.phone)}</div>
+    ${smsPending.demo ? `<div class="hint err" style="text-align:center">Демо-режим: SMS-шлюз не подключён. Код: <b>${smsPending.code}</b></div>` : ''}
+    <div class="field"><label>Код из SMS</label><input id="aCode" type="tel" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></div>
+    <button class="btn full" id="pVer">Подтвердить</button>
+    <button class="btn ghost full" id="pBack" style="margin-top:8px">Изменить номер</button>`;
+  $('v-auth').innerHTML = `<div class="box"><div style="font-size:56px;text-align:center">💬</div>
+    <h1 style="text-align:center;padding:8px 0 16px">${em && reg ? 'Регистрация' : 'Вход'}</h1>
+    <div class="tabs" style="margin:0 0 10px"><button class="${em ? 'on' : ''}" data-at="email">Почта</button><button class="${em ? '' : 'on'}" data-at="phone">Телефон</button></div>${f}</div>`;
+  $('v-auth').classList.add('on');
+}
+function okAuth(id) {
+  jset(AK, { id, ts: Date.now() });
+  try { localStorage.removeItem('liks_session'); } catch (e) {}
+  smsPending = null; $('v-auth').classList.remove('on'); renderChats(); show('v-chats'); toast('Добро пожаловать ✓');
+}
+async function sendSms(phone) {
+  if (window.SMS_API && SMS_API.send) {
+    const r = await fetch(SMS_API.send, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone }) });
+    if (!r.ok) throw new Error('sms');
+    smsPending = { phone, tries: 0 };
+  } else smsPending = { phone, tries: 0, demo: true, code: String(100000 + Math.floor(Math.random() * 900000)), exp: Date.now() + 300000 };
+}
+document.addEventListener('click', async (e) => {
+  const t = e.target; if (!$('v-auth').contains(t)) return;
+  const at = t.closest('[data-at]');
+  if (at) { authTab = at.dataset.at; smsPending = null; return renderAuth(); }
+  if (t.id === 'aSw') { authMode = authMode === 'up' ? 'in' : 'up'; return renderAuth(); }
+  if (t.id === 'pBack') { smsPending = null; return renderAuth(); }
+  if (t.id === 'aGo') {
+    const email = $('aEmail').value.trim().toLowerCase(), pw = $('aPass').value, U = jget(UK, {});
+    if (!/^\S+@\S+\.\S+$/.test(email)) return toast('Введите корректную почту');
+    if (authMode === 'up') {
+      if (pw.length < 6) return toast('Пароль — минимум 6 символов');
+      if (pw !== $('aPass2').value) return toast('Пароли не совпадают');
+      if (U[email]) return toast('Эта почта уже зарегистрирована');
+      const salt = Math.random().toString(36).slice(2); U[email] = { s: salt, h: await hash(pw, salt) };
+      if (!jset(UK, U)) return toast('Не хватило памяти браузера');
+    } else {
+      const u = U[email];
+      if (!u || u.h !== await hash(pw, u.s)) return toast('Неверная почта или пароль');
+    }
+    return okAuth('e:' + email);
+  }
+  if (t.id === 'pGo') {
+    const ph = normPhone($('aPhone').value); if (!ph) return toast('Введите номер с кодом страны');
+    try { await sendSms(ph); } catch (x) { return toast('Не удалось отправить SMS'); }
+    return renderAuth();
+  }
+  if (t.id === 'pVer') {
+    const code = $('aCode').value.trim(); if (!smsPending) return;
+    if (++smsPending.tries > 5) { smsPending = null; renderAuth(); return toast('Слишком много попыток, запросите код заново'); }
+    let ok = false;
+    if (smsPending.demo) ok = Date.now() < smsPending.exp && code === smsPending.code;
+    else try { ok = (await fetch(SMS_API.verify, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: smsPending.phone, code }) })).ok; } catch (x) {}
+    return ok ? okAuth('p:' + smsPending.phone) : toast('Неверный код');
+  }
+});
+
+if (!jget(AK, null)) renderAuth();
+renderChats();
+show('v-chats');
 </script>
 </body>
 </html>
