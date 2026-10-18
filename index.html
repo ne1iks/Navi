@@ -73,6 +73,9 @@
   .task-title { font-weight: 700; font-size: 16px; }
   .task-desc { font-size: 13px; color: var(--muted); margin-top: 2px; }
   .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-left: 6px; vertical-align: middle; }
+  .adm { display: inline-block; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 20px; margin-left: 6px; vertical-align: middle; background: linear-gradient(90deg, #d9a400, #ff6a3d); color: #1a1000; }
+  .d-easy { background: #3a7a55; }
+  .tabs button { font-size: 13px; padding: 10px 2px; }
   .d-medium { background: #2a5d8f; }
   .d-hard { background: #8f3a6e; }
   .d-legend { background: linear-gradient(90deg, #d9a400, #ff6a3d); color: #1a1000; }
@@ -235,6 +238,8 @@
       <div><div class="title">Задания и подарки</div><div class="sub">Награды, коллекция, отправка</div></div>
     </div>
 
+    <div class="item" id="adminItem" data-admin="1" style="display:none"><div class="icon c-indigo">🛠</div><div><div class="title">Админ-панель</div><div class="sub">Выдача подарков</div></div></div>
+
     <a class="item donate" href="https://donatty.com/dekiartv6t" target="_blank" rel="noopener">
       <div class="icon c-pink">💖</div>
       <div><div class="title">Пожертвовать</div><div class="sub">Поддержать развитие мессенджера</div></div>
@@ -251,10 +256,14 @@
   <div class="tabs">
     <button class="on" data-pane="p-tasks">Задания</button>
     <button data-pane="p-coll">Коллекция <span id="collCount"></span></button>
+    <button data-pane="p-cases">Кейсы</button>
+    <button data-pane="p-up">Апгрейд</button>
   </div>
 
   <div class="pane on" id="p-tasks"></div>
   <div class="pane" id="p-coll"></div>
+  <div class="pane" id="p-cases"></div>
+  <div class="pane" id="p-up"></div>
 
   <p class="note">Подарки — это коллекционные цифровые предметы внутри мессенджера. Каждый уникален: свой номер, фон и узор.</p>
 </section>
@@ -336,6 +345,7 @@
 <script>
 /* ===================== ДАННЫЕ ===================== */
 const DIFF = {
+  easy:   { label: 'Легко',      cls: 'd-easy',   supply: 100000, rarity: 'Обычный' },
   medium: { label: 'Средне',     cls: 'd-medium', supply: 50000, rarity: 'Редкий' },
   hard:   { label: 'Сложно',     cls: 'd-hard',   supply: 5000,  rarity: 'Эпический' },
   legend: { label: 'Легендарно', cls: 'd-legend', supply: 500,   rarity: 'Легендарный' }
@@ -351,8 +361,78 @@ const MODELS = {
   cup:     { e: '🏆', n: 'Кубок чемпиона' },
   wolf:    { e: '🐺', n: 'Лунный волк' },
   lion:    { e: '🦁', n: 'Золотой лев' },
-  phoenix: { e: '🦅', n: 'Феникс' }
+  phoenix: { e: '🦅', n: 'Феникс' },
+  cat: { e: '🐱', n: 'Пушистый кот' },
+  clover: { e: '🍀', n: 'Клевер удачи' },
+  pizza: { e: '🍕', n: 'Пицца-пати' },
+  star: { e: '⭐', n: 'Звёздочка' },
+  balloon: { e: '🎈', n: 'Воздушный шар' },
+  donut: { e: '🍩', n: 'Пончик' },
+  rainbow: { e: '🌈', n: 'Радуга' },
+  teddy: { e: '🧸', n: 'Плюшевый мишка' },
+  ufo: { e: '🛸', n: 'НЛО' },
+  octo: { e: '🐙', n: 'Осьминог' },
+  guitar: { e: '🎸', n: 'Рок-гитара' },
+  amulet: { e: '🧿', n: 'Амулет' },
+  fox: { e: '🦊', n: 'Хитрая лиса' },
+  saturn: { e: '🪐', n: 'Сатурн' },
+  owl: { e: '🦉', n: 'Мудрая сова' },
+  blade: { e: '🗡️', n: 'Клинок теней' },
+  seal: { e: '⚜️', n: 'Печать рода' },
+  volcano: { e: '🌋', n: 'Вулкан' },
+  genie: { e: '🧞', n: 'Джинн' },
+  shark: { e: '🦈', n: 'Акула' },
+  galaxy: { e: '🌌', n: 'Галактика' },
+  comet: { e: '☄️', n: 'Комета' },
+  trident: { e: '🔱', n: 'Трезубец' },
+  jade: { e: '🐲', n: 'Нефритовый дракон' },
+  icecream: { e: '🍦', n: 'Мороженое' },
+  dice: { e: '🎲', n: 'Счастливый кубик' },
+  chick: { e: '🐥', n: 'Цыплёнок' },
+  apple: { e: '🍎', n: 'Яблоко' },
+  butterfly: { e: '🦋', n: 'Бабочка' },
+  whale: { e: '🐳', n: 'Космический кит' },
+  masks: { e: '🎭', n: 'Театральные маски' },
+  telescope: { e: '🔭', n: 'Телескоп' },
+  peacock: { e: '🦚', n: 'Павлин' },
+  tiger: { e: '🐅', n: 'Тигр' },
+  bow: { e: '🏹', n: 'Лук охотника' },
+  wizard: { e: '🧙', n: 'Маг' },
+  scorpion: { e: '🦂', n: 'Скорпион' },
+  shield: { e: '🛡️', n: 'Щит героя' },
+  knight: { e: '🏇', n: 'Всадник' },
+  bolt: { e: '⚡', n: 'Молния Зевса' },
+  rex: { e: '🦖', n: 'Король ящеров' },
+  shootstar: { e: '🌠', n: 'Падающая звезда' },
+  eye: { e: '👁️', n: 'Всевидящее око' },
+  temple: { e: '🏛️', n: 'Храм богов' }
 };
+
+/* Модели по редкости (используются кейсами) */
+const MT = {
+  easy:   ['cat', 'clover', 'pizza', 'star', 'balloon', 'donut', 'rainbow', 'teddy', 'icecream', 'dice', 'chick', 'apple'],
+  medium: ['rocket', 'orb', 'cup', 'unicorn', 'ufo', 'octo', 'guitar', 'amulet', 'fox', 'saturn', 'butterfly', 'whale', 'masks', 'telescope', 'peacock'],
+  hard:   ['wolf', 'crown', 'diamond', 'owl', 'blade', 'seal', 'volcano', 'genie', 'shark', 'tiger', 'bow', 'wizard', 'scorpion', 'shield', 'knight'],
+  legend: ['lion', 'dragon', 'phoenix', 'galaxy', 'comet', 'trident', 'jade', 'bolt', 'rex', 'shootstar', 'eye', 'temple']
+};
+
+/* Кейсы: сжигаете N подарков редкости cost.r — выпадает подарок случайной редкости по шансам odds (%) */
+const CASES = [
+  { id: 'c1', n: 'Кейс «Старт»',   e: '📦', cost: { r: 'Обычный',     n: 3 }, odds: { 'Обычный': 60, 'Редкий': 32, 'Эпический': 7,  'Легендарный': 1 } },
+  { id: 'c2', n: 'Кейс «Редкий»',  e: '🎁', cost: { r: 'Редкий',      n: 2 }, odds: { 'Обычный': 15, 'Редкий': 50, 'Эпический': 30, 'Легендарный': 5 } },
+  { id: 'c3', n: 'Кейс «Эпик»',    e: '💠', cost: { r: 'Эпический',   n: 2 }, odds: { 'Редкий': 35, 'Эпический': 50, 'Легендарный': 15 } },
+  { id: 'c4', n: 'Кейс «Легенда»', e: '👑', cost: { r: 'Легендарный', n: 2 }, odds: { 'Эпический': 50, 'Легендарный': 50 } },
+  { id: 'c5', n: 'Кейс «Лёгкий шанс»', e: '📮', cost: { r: 'Обычный', n: 5 }, odds: { 'Обычный': 40, 'Редкий': 40, 'Эпический': 17, 'Легендарный': 3 } },
+  { id: 'c6', n: 'Кейс «Азарт»', e: '🎰', cost: { r: 'Обычный', n: 10 }, odds: { 'Обычный': 20, 'Редкий': 40, 'Эпический': 30, 'Легендарный': 10 } },
+  { id: 'c7', n: 'Кейс «Удача»', e: '🍀', cost: { r: 'Редкий', n: 1 }, odds: { 'Обычный': 70, 'Редкий': 25, 'Эпический': 5 } },
+  { id: 'c8', n: 'Кейс «Сундук»', e: '🧰', cost: { r: 'Редкий', n: 3 }, odds: { 'Обычный': 10, 'Редкий': 45, 'Эпический': 35, 'Легендарный': 10 } },
+  { id: 'c9', n: 'Кейс «Золотой»', e: '🪙', cost: { r: 'Редкий', n: 5 }, odds: { 'Редкий': 30, 'Эпический': 45, 'Легендарный': 25 } },
+  { id: 'c10', n: 'Кейс «Мистик»', e: '🌙', cost: { r: 'Эпический', n: 1 }, odds: { 'Редкий': 55, 'Эпический': 40, 'Легендарный': 5 } },
+  { id: 'c11', n: 'Кейс «Королевский»', e: '🏰', cost: { r: 'Эпический', n: 3 }, odds: { 'Редкий': 10, 'Эпический': 45, 'Легендарный': 45 } },
+  { id: 'c12', n: 'Кейс «Бездна»', e: '🕳️', cost: { r: 'Эпический', n: 5 }, odds: { 'Эпический': 30, 'Легендарный': 70 } },
+  { id: 'c13', n: 'Кейс «Ва-банк»', e: '🎯', cost: { r: 'Легендарный', n: 1 }, odds: { 'Редкий': 40, 'Эпический': 45, 'Легендарный': 15 } },
+  { id: 'c14', n: 'Кейс «Абсолют»', e: '💫', cost: { r: 'Легендарный', n: 3 }, odds: { 'Эпический': 20, 'Легендарный': 80 } }
+];
 
 const BACKDROPS = [
   { n: 'Полночь',  c: ['#1b2a6b', '#0a0f2e'] },
@@ -373,7 +453,9 @@ const TASKS = [
   { id: 't3', title: 'Душа компании',   desc: 'Пригласи 10 друзей',                    goal: 10,   diff: 'hard',   pool: ['wolf', 'crown', 'unicorn'] },
   { id: 't4', title: 'Марафонец',       desc: 'Заходи 30 дней подряд',                 goal: 30,   diff: 'hard',   pool: ['dragon', 'phoenix'] },
   { id: 't5', title: 'Мастер порядка',  desc: 'Создай 5 папок и разложи 50 чатов',     goal: 55,   diff: 'hard',   pool: ['diamond', 'orb', 'crown'] },
-  { id: 't6', title: 'Легенда',         desc: 'Отправь 10 000 сообщений',              goal: 10000,diff: 'legend', pool: ['lion', 'dragon', 'phoenix', 'diamond'] }
+  { id: 't6', title: 'Легенда',         desc: 'Отправь 10 000 сообщений',              goal: 10000,diff: 'legend', pool: ['lion', 'dragon', 'phoenix', 'diamond'] },
+  { id: 't7', title: 'Первые слова',    desc: 'Отправь 5 сообщений',                   goal: 5,    diff: 'easy',   pool: MT.easy },
+  { id: 't8', title: 'Разговорчивый',   desc: 'Отправь 50 сообщений',                  goal: 50,   diff: 'easy',   pool: MT.easy }
 ];
 
 /* ===================== СОСТОЯНИЕ ===================== */
@@ -388,9 +470,10 @@ const rnd = (n) => Math.floor(Math.random() * n);
 const pick = (a) => a[rnd(a.length)];
 
 /* ===================== ЛОГИКА ===================== */
-function makeGift(task) {
-  const d = DIFF[task.diff];
-  const key = pick(task.pool);
+function makeGift(task) { return genGift(task.diff, task.pool); }
+function genGift(dk, pool) {
+  const d = DIFF[dk];
+  const key = pick(pool);
   const bd = pick(BACKDROPS);
   const sym = pick(SYMBOLS);
   return {
@@ -410,9 +493,11 @@ function makeGift(task) {
    Gifts.addProgress('t1', 1)  — +1 отправленное сообщение и т.д. */
 window.Gifts = {
   addProgress(id, n = 1) {
-    const t = TASKS.find(x => x.id === id);
-    if (!t || S.claimed[id]) return;
-    S.progress[id] = Math.min(t.goal, (S.progress[id] || 0) + n);
+    (id === 't1' ? ['t1', 't7', 't8'] : [id]).forEach(i => {
+      const t = TASKS.find(x => x.id === i);
+      if (!t || S.claimed[i]) return;
+      S.progress[i] = Math.min(t.goal, (S.progress[i] || 0) + n);
+    });
     save(); renderTasks();
   }
 };
@@ -451,7 +536,7 @@ function renderTasks() {
     let action;
     if (got) action = '<button class="btn" disabled>Получено ✓</button>';
     else if (done) action = `<button class="btn claim" data-claim="${t.id}">🎁 Забрать</button>`;
-    else action = `<button class="btn ghost" data-step="${t.id}">+ шаг (тест)</button>`;
+    else action = '<button class="btn" disabled>В процессе</button>';
     return `<div class="task">
       <div class="task-head">
         <div class="task-gift">${got ? '✅' : icon}</div>
@@ -466,7 +551,88 @@ function renderTasks() {
   }).join('');
 }
 
+const UP = { 'Обычный': { 'Редкий': 45, 'Эпический': 15, 'Легендарный': 3 }, 'Редкий': { 'Эпический': 35, 'Легендарный': 10 }, 'Эпический': { 'Легендарный': 25 } };
+let upSel = null, upTgt = null;
+function renderUp() {
+  const el = $('p-up'); if (!el) return;
+  const list = S.gifts.filter(g => UP[g.rarity]);
+  if (upSel && !list.some(g => g.uid === upSel)) upSel = null;
+  const sel = list.find(g => g.uid === upSel), opts = sel ? UP[sel.rarity] : null;
+  if (!opts || !(upTgt in opts)) upTgt = null;
+  el.innerHTML = `<div class="task-desc" style="margin-bottom:10px">Выберите подарок и цель. При успехе получите подарок более высокой редкости, при неудаче подарок сгорает.</div>` +
+    (list.length ? `<div class="grid" style="grid-template-columns:repeat(3,1fr)">${list.map(g => `<div class="task" data-upsel="${g.uid}" style="margin:0;text-align:center;padding:10px;cursor:pointer;${g.uid === upSel ? 'outline:2px solid var(--accent)' : ''}"><div style="font-size:34px">${MODELS[g.model].e}</div><div class="task-desc">${g.rarity}</div></div>`).join('')}</div>` : '<div class="empty">Нет подарков для улучшения.<br>Легендарные улучшить нельзя.</div>') +
+    (opts ? '<div class="sec">Цель</div>' + Object.entries(opts).map(([r, p]) => `<button class="opt" data-uptgt="${r}" style="${r === upTgt ? 'outline:2px solid var(--accent)' : ''}">${r} — шанс ${p}%</button>`).join('') : '') +
+    (sel && upTgt ? '<button class="btn" data-upgo="1" style="width:100%;margin-top:6px;padding:13px">⚡ Улучшить</button>' : '');
+}
+function doUpgrade() {
+  const g = S.gifts.find(x => x.uid === upSel); if (!g || !upTgt) return;
+  const p = (UP[g.rarity] || {})[upTgt]; if (!p) return;
+  if (!confirm(`Рискнуть подарком «${MODELS[g.model].n}»? Шанс ${p}%, при неудаче он сгорит.`)) return;
+  S.gifts = S.gifts.filter(x => x.uid !== g.uid);
+  const tgt = upTgt; upSel = null; upTgt = null;
+  if (rnd(100) < p) {
+    const dk = Object.keys(DIFF).find(k => DIFF[k].rarity === tgt);
+    const ng = genGift(dk, MT[dk]); ng.src = 'up';
+    S.gifts.unshift(ng); save(); renderColl(); openGift(ng, true);
+  } else { save(); renderColl(); toast('Неудача 💥 подарок сгорел'); }
+}
+
+/* Админы: впишите сюда @юзернейм (из профиля) или почту аккаунта */
+const ADMINS = ['username'];
+const isAdmin = () => {
+  const u = (ST.username || '').toLowerCase(), a = jget(AK, null), em = a && a.id && a.id.startsWith('e:') ? a.id.slice(2) : '';
+  return ADMINS.some(x => { x = x.toLowerCase().replace(/^@/, ''); return x && (x === u || x === em); });
+};
+function refreshAdmin() { try { $('adminItem').style.display = isAdmin() ? 'flex' : 'none'; } catch (e) {} }
+function openAdmin() {
+  if (!isAdmin()) return;
+  const sel = 'class="sel" style="max-width:100%;width:100%"';
+  $('sheet').innerHTML = `<h2>🛠 Админ-панель</h2><div class="lead">Выдача подарков себе</div>
+    <div class="field"><label>Модель</label><select ${sel} id="adM">${Object.entries(MODELS).map(([k, m]) => `<option value="${k}">${m.e} ${m.n}</option>`).join('')}</select></div>
+    <div class="field"><label>Редкость</label><select ${sel} id="adR">${Object.keys(DIFF).map(k => `<option value="${k}">${DIFF[k].rarity}</option>`).join('')}</select></div>
+    <div class="field"><label>Фон</label><select ${sel} id="adB"><option value="-1">Случайный</option>${BACKDROPS.map((b, i) => `<option value="${i}">${b.n}</option>`).join('')}</select></div>
+    <div class="field"><label>Количество (1–50)</label><input id="adN" type="tel" value="1"></div>
+    <div class="row"><button class="btn ghost" id="adX">Закрыть</button><button class="btn" id="adGo">🎁 Выдать</button></div>`;
+  $('modal').classList.add('on');
+  $('adX').onclick = () => $('modal').classList.remove('on');
+  $('adGo').onclick = () => {
+    if (!isAdmin()) return;
+    const n = Math.min(50, Math.max(1, parseInt($('adN').value) || 1)), bd = +$('adB').value;
+    for (let i = 0; i < n; i++) {
+      const g = genGift($('adR').value, [$('adM').value]);
+      if (bd >= 0) g.backdrop = bd;
+      g.src = 'admin'; S.gifts.unshift(g);
+    }
+    save(); renderColl(); toast('Выдано: ' + n + ' ✓');
+  };
+}
+
+function renderCases() {
+  const el = $('p-cases'); if (!el) return;
+  el.innerHTML = CASES.map(c => {
+    const have = S.gifts.filter(g => g.rarity === c.cost.r).length;
+    return `<div class="task"><div class="task-head"><div class="task-gift">${c.e}</div>
+      <div><div class="task-title">${c.n}</div><div class="task-desc">Цена: ${c.cost.n} × «${c.cost.r}» (у вас ${have})</div></div></div>
+      <div class="task-desc" style="margin-top:10px">Шансы: ${Object.entries(c.odds).map(([r, p]) => r + ' ' + p + '%').join(' · ')}</div>
+      <div class="task-foot" style="margin-top:10px"><span>Подарки сгорают</span><button class="btn" data-case="${c.id}" ${have >= c.cost.n ? '' : 'disabled'}>Открыть</button></div></div>`;
+  }).join('');
+}
+function openCase(id) {
+  const c = CASES.find(x => x.id === id); if (!c) return;
+  const mine = S.gifts.filter(g => g.rarity === c.cost.r);
+  if (mine.length < c.cost.n) return toast('Не хватает подарков');
+  if (!confirm(`Сжечь ${c.cost.n} × «${c.cost.r}» ради «${c.n}»? Это необратимо.`)) return;
+  const burn = new Set(mine.slice(-c.cost.n).map(g => g.uid));
+  S.gifts = S.gifts.filter(g => !burn.has(g.uid));
+  let x = rnd(100), r = Object.keys(c.odds).pop();
+  for (const [k, p] of Object.entries(c.odds)) { if ((x -= p) < 0) { r = k; break; } }
+  const dk = Object.keys(DIFF).find(k => DIFF[k].rarity === r);
+  const g = genGift(dk, MT[dk]); g.src = 'case';
+  S.gifts.unshift(g); save(); renderColl(); openGift(g, true);
+}
+
 function renderColl() {
+  renderCases(); renderUp();
   $('collCount').textContent = S.gifts.length ? '(' + S.gifts.length + ')' : '';
   $('p-coll').innerHTML = S.gifts.length
     ? `<div class="grid">${S.gifts.map(g => giftHTML(g, false)).join('')}</div>`
@@ -478,7 +644,7 @@ function openGift(g, isNew) {
   $('sheet').innerHTML = `
     ${giftHTML(g, true)}
     <h2>${isNew ? '🎉 Новый подарок!' : m.n}</h2>
-    <div class="lead">${isNew ? 'Награда за выполненное задание' : 'Получен ' + g.date}</div>
+    <div class="lead">${isNew ? ({ case: 'Выпало из кейса', up: 'Улучшение удалось!' }[g.src] || 'Награда за выполненное задание') : 'Получен ' + g.date}</div>
     <div class="attrs">
       <div class="attr"><b>Модель</b><span>${m.n}<em>${(g.pm.model / 10).toFixed(1)}%</em></span></div>
       <div class="attr"><b>Фон</b><span>${b.n}<em>${(g.pm.backdrop / 10).toFixed(1)}%</em></span></div>
@@ -510,6 +676,7 @@ function toast(t) {
 /* ===================== СОБЫТИЯ ===================== */
 const TABV = { 'v-chats': 0, 'v-contacts': 1, 'v-settings': 2, 'v-sub': 2, 'v-gifts': 2, 'v-profile': 3 };
 function show(id) {
+  refreshAdmin();
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   $(id).classList.add('active');
   document.querySelectorAll('nav a').forEach((a, i) => a.classList.toggle('active', i === TABV[id]));
@@ -528,11 +695,14 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
 document.addEventListener('click', (e) => {
   const c = e.target.closest('[data-claim]');
   if (c) return claim(c.dataset.claim);
-  const s = e.target.closest('[data-step]');
-  if (s) { // тестовая кнопка: двигает прогресс ~15% цели
-    const t = TASKS.find(x => x.id === s.dataset.step);
-    return Gifts.addProgress(t.id, Math.max(1, Math.ceil(t.goal * 0.15)));
-  }
+  const cs = e.target.closest('[data-case]');
+  if (cs) return openCase(cs.dataset.case);
+  const us = e.target.closest('[data-upsel]');
+  if (us) { upSel = us.dataset.upsel; upTgt = null; return renderUp(); }
+  const ut = e.target.closest('[data-uptgt]');
+  if (ut) { upTgt = ut.dataset.uptgt; return renderUp(); }
+  if (e.target.closest('[data-upgo]')) return doUpgrade();
+  if (e.target.closest('[data-admin]')) return openAdmin();
   const g = e.target.closest('.grid .gift');
   if (g) openGift(S.gifts.find(x => x.uid === g.dataset.uid), false);
   if (e.target === $('modal')) $('modal').classList.remove('on');
@@ -600,9 +770,10 @@ function updBadge() {
   b.textContent = n > 99 ? '99+' : n;
   b.style.display = (ST.nCounter && n > 0) ? 'flex' : 'none';
 }
+function isAdm() { try { return isAdmin(); } catch (e) { return false; } }
 function updAccountSub() {
   const el = document.querySelector('[data-page=account] .sub');
-  if (el) el.textContent = ST.username ? '@' + ST.username + (ST.name ? ' · ' + ST.name : '') : 'Имя, @имя пользователя, «О себе»';
+  if (el) el.textContent = ST.username ? '@' + ST.username + (ST.name ? ' · ' + ST.name : '') + (isAdm() ? ' · admin' : '') : 'Имя, @имя пользователя, «О себе»';
 }
 function applyAll() {
   const r = document.documentElement;
@@ -1100,8 +1271,8 @@ function renderProfile() {
   const msgs = cloudCfg ? Object.keys(CH.chats).filter(id => lastMsg(id)).length : Object.values(CH.chats).reduce((a, c) => a + c.msgs.length, 0);
   $('profBody').innerHTML = `
     <div class="avatar" style="${ph ? `background-image:url('${ph}')` : ''}">${ph ? '' : ST.avatar}</div>
-    <h2 class="center">${esc(ST.name || 'Без имени')}</h2>
-    <div class="sub center">${ST.username ? '@' + esc(ST.username) : 'Имя пользователя не задано'}</div>
+    <h2 class="center">${esc(ST.name || 'Без имени')}${isAdm() ? '<span class="adm">admin</span>' : ''}</h2>
+    <div class="sub center">${ST.username ? '@' + esc(ST.username) + (isAdm() ? ' <span class="adm">admin</span>' : '') : 'Имя пользователя не задано'}</div>
     ${ST.bio ? `<p class="center" style="margin-top:10px">${esc(ST.bio)}</p>` : ''}
     <div class="stats">
       <div class="stile"><b>${S.gifts.length}</b><span>Подарков</span></div>
