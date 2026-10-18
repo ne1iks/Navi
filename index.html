@@ -444,6 +444,19 @@ body.gaming #aifab{display:none}
 #pu{font-size:18px;padding:4px 8px;color:var(--mut)}
 .row.flash .b{animation:pflash 1.4s ease}
 @keyframes pflash{0%,60%{box-shadow:0 0 0 3px var(--accent),0 0 22px var(--glow)}100%{box-shadow:none}}
+
+/* ===== NFT в стиле Telegram: бэкдроп + узор + модель ===== */
+.nc{gap:4px;padding:6px 6px 9px;border-radius:16px;text-align:center}
+.nsn{justify-content:flex-end;font:700 11px/1 Onest,system-ui,sans-serif;letter-spacing:.02em;opacity:.95;padding:2px 4px}
+.na{border-radius:12px;background:radial-gradient(circle at 50% 42%,var(--b1) 0,color-mix(in srgb,var(--b1) 45%,var(--b2)) 38%,var(--b2) 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25),inset 0 -14px 24px rgba(0,0,0,.28)}
+.na::before{display:none}
+.np{position:absolute;inset:0;pointer-events:none}
+.np span{position:absolute;left:50%;top:50%;line-height:1;transform:translate(-50%,-50%) rotate(var(--a)) translateY(calc(var(--d) * -1)) rotate(calc(var(--a) * -1));filter:grayscale(1) brightness(2.2) contrast(.8);mix-blend-mode:soft-light}
+.ne{font-size:46px;margin-bottom:0;filter:drop-shadow(0 6px 5px rgba(0,0,0,.45)) drop-shadow(0 0 10px rgba(255,255,255,.35)) saturate(1.15)}
+.ne.big{font-size:72px}
+.nn{font-size:13px;font-weight:700;margin-top:2px}
+.nr{font-size:10px}
+.na .np span:nth-child(odd){transform:translate(-50%,-50%) rotate(var(--a)) translateY(calc(var(--d) * -1)) rotate(calc(var(--a) * -1 + 12deg))}
 </style>
 </head>
 <body>
@@ -1069,10 +1082,17 @@ const showcase=u=>el('div','sc',own(u).slice(0,8).map(x=>x.e).join(' '));
 let nt='col',up=null,nk='',dd=0;
 const ED={c:9999,r:2500,e:500,l:100,m:10};
 const serial=x=>{let h=7;for(const ch of x.id)h=(h*131+ch.charCodeAt(0))%100003;const s=ED[x.r];return '№ '+String(h%s+1).padStart(String(s).length,'0')+' / '+s};
+const BDP=[['#ffd7a8','#c9793a'],['#bfe6ff','#3a86c9'],['#ffc2dd','#c93a7e'],['#c8f5d2','#2f9d57'],['#e3d0ff','#7a45c9'],['#fff2a8','#c9a23a'],['#ffc9c2','#c9473a'],['#b8f2f0','#2fa3a0'],['#d9dcff','#4a52c9'],['#f5d0b5','#8a5a3a']];
+const hsh=x=>{let h=7;for(const ch of x)h=(h*131+ch.charCodeAt(0))%1000003;return h};
+const PAT=[[0,30],[60,30],[120,30],[180,30],[240,30],[300,30],[30,46],[90,46],[150,46],[210,46],[270,46],[330,46],[0,60],[45,60],[90,60],[135,60],[180,60],[225,60],[270,60],[315,60]];
 function card(x,n,fn){
-  const b=el(fn?'button':'div','nc');b.style.setProperty('--rc',R[x.r][1]);b.dataset.r=x.r;
-  const art=el('div','na');art.append(el('div','ne',x.e));
-  b.append(el('div','nsn',serial(x)),art,el('div','nn',x.n),el('div','nr',R[x.r][0]+(n>1?' ×'+n:'')));if(fn)b.onclick=fn;return b;
+  const b=el(fn?'button':'div','nc'),bp=BDP[hsh(x.id)%BDP.length];
+  b.style.setProperty('--rc',R[x.r][1]);b.style.setProperty('--b1',bp[0]);b.style.setProperty('--b2',bp[1]);b.dataset.r=x.r;
+  const art=el('div','na'),pt=el('div','np');
+  PAT.forEach(([a,d],i)=>{const s=el('span',0,x.e);s.style.cssText='--a:'+a+'deg;--d:'+d+'%;font-size:'+(i<6?13:i<12?11:9)+'px;opacity:'+(i<6?.34:i<12?.26:.18);pt.append(s)});
+  art.append(pt,el('div','ne',x.e));
+  const no=hsh(x.id+'#')%ED[x.r]+1;
+  b.append(el('div','nsn','#'+String(no).padStart(4,'0')),art,el('div','nn',x.n),el('div','nr',R[x.r][0]+(n>1?' ×'+n:'')));if(fn)b.onclick=fn;return b;
 }
 /* наклон карточки за курсором и «бегущий» голографический блик */
 document.addEventListener('pointermove',e=>{
