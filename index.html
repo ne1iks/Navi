@@ -248,6 +248,29 @@ mark{background:#ffc2dd;color:#3b1a2c}
 @keyframes skfall{0%{transform:translate3d(0,-30px,0) rotate(0)}25%{transform:translate3d(30px,28vh,0) rotate(110deg)}50%{transform:translate3d(-24px,55vh,0) rotate(220deg)}75%{transform:translate3d(26px,82vh,0) rotate(330deg)}100%{transform:translate3d(-10px,112vh,0) rotate(440deg)}}
 @media(prefers-reduced-motion:reduce){#sakura{display:none}.rb.own{animation:none}}
 .still #sakura{display:none}
+
+/* ===== ИИ-помощник ===== */
+#aifab{position:fixed;right:16px;bottom:calc(92px + env(safe-area-inset-bottom));width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#ffb3d6,var(--accent));color:#fff;font-size:26px;display:grid;place-items:center;box-shadow:0 0 22px var(--glow),0 0 0 3px var(--panel);z-index:6}
+#aip{position:fixed;inset:0;z-index:7;display:flex;align-items:flex-end;justify-content:center;background:rgba(40,8,30,.5);backdrop-filter:blur(3px)}
+#aip>div{display:flex;flex-direction:column;width:min(480px,100%);height:min(720px,100%);background:var(--panel);border-radius:22px 22px 0 0;box-shadow:0 0 50px var(--glow2);padding-bottom:env(safe-area-inset-bottom);overflow:hidden}
+@media(min-width:760px){#aip{align-items:center}#aip>div{border-radius:22px;height:min(720px,92vh)}}
+#aih{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+#aih b{flex:1;font-size:18px;color:var(--accent);text-shadow:0 0 12px var(--glow)}
+#aih button{font-size:18px;padding:6px 10px;border-radius:12px;color:var(--mut)}
+#aim{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;overscroll-behavior:contain}
+.aib{max-width:86%;padding:9px 13px;border-radius:16px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.4}
+.aib.u{align-self:flex-end;background:linear-gradient(135deg,#ee6aa1,var(--me));color:#fff;border-bottom-right-radius:5px;box-shadow:0 0 14px var(--glow2)}
+.aib.a{align-self:flex-start;background:var(--them);box-shadow:0 0 0 1px var(--line),0 0 12px var(--glow2);border-bottom-left-radius:5px}
+.aib.err{color:#e5484d}
+.aihint{margin:auto;text-align:center;color:var(--mut);padding:20px;display:grid;gap:8px}
+.aihint b{font-size:18px;color:var(--ink)}
+.aisg{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:6px}
+.aisg button{padding:6px 12px;border-radius:14px;background:var(--bg);box-shadow:0 0 0 1px var(--line);font-size:14px}
+.aic{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line);align-items:flex-end}
+#aiin{flex:1;resize:none;max-height:120px;padding:10px 14px;border-radius:20px;border:1px solid var(--line);background:var(--bg)}
+#aiin:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px var(--glow2)}
+#aigo{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#ff8fc4,var(--accent));color:#fff;font-size:20px;flex:none;box-shadow:0 0 14px var(--glow)}
+#aigo:disabled{opacity:.4}
 </style>
 </head>
 <body>
@@ -1519,6 +1542,64 @@ async function send(){
 (()=>{const w=document.getElementById('sakura');for(let i=0;i<16;i++){const p=document.createElement('i');
 p.style.cssText='left:'+(Math.random()*100).toFixed(1)+'%;--s:'+(9+Math.random()*10).toFixed(0)+'px;--o:'+(.45+Math.random()*.45).toFixed(2)+';--d:'+(12+Math.random()*12).toFixed(1)+'s;--t:-'+(Math.random()*20).toFixed(1)+'s';
 w.append(p)}})();
+</script>
+<button id="aifab" aria-label="ИИ-помощник" hidden>✨</button>
+<div id="aip" hidden><div>
+<div id="aih"><b>✨ Помощник</b><button id="aicl" aria-label="Очистить">🗑</button><button id="aix" aria-label="Закрыть">✕</button></div>
+<div id="aim"></div>
+<div class="aic"><textarea id="aiin" rows="1" maxlength="2000" placeholder="Спросите что-нибудь"></textarea><button id="aigo" aria-label="Отправить">➤</button></div>
+</div></div>
+<script>
+(()=>{
+// Адрес вашего прокси (Cloudflare Worker). Пока пусто — помощник покажет подсказку по подключению.
+const AI_URL='';
+const $=s=>document.querySelector(s),fab=$('#aifab'),pan=$('#aip'),box=$('#aim'),inp=$('#aiin'),go=$('#aigo');
+const SUG=['Придумай ответ другу','Объясни простыми словами','Составь план на день'];
+let H=[],busy=false;
+const uid=()=>{try{return firebase.auth().currentUser?.uid||'x'}catch{return'x'}};
+const key=()=>'ai_h_'+uid();
+const load=()=>{try{H=JSON.parse(localStorage.getItem(key())||'[]')}catch{H=[]}};
+const save=()=>{try{localStorage.setItem(key(),JSON.stringify(H.slice(-30)))}catch{}};
+const bub=(c,t)=>{const d=document.createElement('div');d.className='aib '+c;d.textContent=t;box.append(d);box.scrollTop=box.scrollHeight;return d};
+function hint(){
+  box.textContent='';
+  const h=document.createElement('div');h.className='aihint';
+  const b=document.createElement('b');b.textContent='Чем помочь?';
+  const p=document.createElement('span');p.textContent=AI_URL?'Задайте любой вопрос.':'Помощник ещё не подключён: в index.html в const AI_URL нужно указать адрес прокси.';
+  h.append(b,p);
+  if(AI_URL){const s=document.createElement('div');s.className='aisg';SUG.forEach(t=>{const x=document.createElement('button');x.textContent=t;x.onclick=()=>{inp.value=t;send()};s.append(x)});h.append(s)}
+  box.append(h);
+}
+function render(){box.textContent='';if(!H.length)return hint();H.forEach(m=>bub(m.role==='user'?'u':'a',m.content))}
+function open(){load();render();pan.hidden=false;fab.hidden=true;setTimeout(()=>inp.focus(),50)}
+function close(){pan.hidden=true;fab.hidden=$('#app').hidden}
+async function send(){
+  const t=inp.value.trim();if(!t||busy)return;
+  if(!AI_URL){render();bub('a err','Помощник не подключён: нет адреса AI_URL.');return}
+  busy=true;go.disabled=true;inp.value='';inp.style.height='';
+  if(!H.length)box.textContent='';
+  H.push({role:'user',content:t});bub('u',t);save();
+  const w=bub('a','…');
+  try{
+    const tok=await firebase.auth().currentUser.getIdToken();
+    const r=await fetch(AI_URL,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},body:JSON.stringify({messages:H.slice(-20)})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.text)throw new Error(d.error||('Ошибка '+r.status));
+    H.push({role:'assistant',content:d.text});w.textContent=d.text;save();
+  }catch(e){
+    H.pop();save();w.className='aib a err';w.textContent='Не удалось получить ответ: '+(e.message||e)+'. Проверьте сеть и попробуйте ещё раз.';
+  }
+  busy=false;go.disabled=false;box.scrollTop=box.scrollHeight;
+}
+fab.onclick=open;$('#aix').onclick=close;
+pan.onclick=e=>{if(e.target===pan)close()};
+$('#aicl').onclick=()=>{if(busy)return;H=[];save();render()};
+go.onclick=send;
+inp.onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();send()}};
+inp.oninput=()=>{inp.style.height='auto';inp.style.height=Math.min(inp.scrollHeight,120)+'px'};
+new MutationObserver(()=>{if(pan.hidden)fab.hidden=$('#app').hidden}).observe($('#app'),{attributes:true,attributeFilter:['hidden']});
+fab.hidden=$('#app').hidden;
+})();
 </script>
 </body>
 </html>
