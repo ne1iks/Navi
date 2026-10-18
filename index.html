@@ -1,1 +1,360 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Круг 💬</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<meta name="theme-color" content="#1f6f5c">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e9eef1;--panel:#fff;--ink:#14202b;--mut:#6a7987;--line:#dbe3e8;--me:#1f6f5c;--them:#fff;--accent:#1f6f5c;--on:#fff;--sheet:#fff;color-scheme:light}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1418;--panel:#141e25;--ink:#e7eef2;--mut:#8697a4;--line:#24323c;--me:#26806a;--them:#1c2a33;--accent:#4fc3a1;--on:#08211a;--sheet:#1c2a33;color-scheme:dark}}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{font:16px/1.4 Onest,system-ui,"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;background:var(--bg);color:var(--ink);padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+#auth,#setup{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);padding:20px;z-index:9}
+.card{background:var(--panel);padding:28px;border-radius:20px;width:min(400px,100%);display:grid;gap:12px}
+.card h1{font-size:30px;font-weight:700}
+.card p,.card li{color:var(--mut);font-size:15px}
+.card ol{padding-left:20px;display:grid;gap:6px}
+.card input{padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.pri{background:var(--accent);color:var(--on);padding:12px;border-radius:12px;font-weight:500}
+.lnk{color:var(--accent);font-size:15px}
+#err{color:#d64545;font-size:14px;min-height:1em}
+#app{height:100%;display:flex;max-width:1100px;margin:0 auto;background:var(--panel)}
+#side{width:340px;border-right:1px solid var(--line);display:flex;flex-direction:column;flex:none}
+#side header{padding:14px 16px 8px;display:flex;align-items:center;gap:10px}
+#side h2{font-size:22px;flex:1}
+#qs{margin:0 16px 8px;padding:9px 14px;border-radius:20px;border:1px solid var(--line);background:var(--bg)}
+#list{overflow-y:auto;flex:1}
+.ci{display:flex;gap:12px;padding:10px 16px;width:100%;text-align:left;align-items:center}
+.ci.on{background:var(--bg)}
+.av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;flex:none;font-size:22px}
+.tx{flex:1;min-width:0}
+.r1{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.r1 b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.r1 small{color:var(--mut);font-size:12px}
+.pv{color:var(--mut);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--accent);flex:none}
+#main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg)}
+#empty{margin:auto;color:var(--mut);text-align:center}
+#chat{flex:1;display:flex;flex-direction:column;min-height:0}
+#head{display:flex;align-items:center;gap:12px;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line)}
+#head .av{width:40px;height:40px}
+#head small{color:var(--mut);display:block;font-size:13px}
+#back{display:none;font-size:24px;padding:4px 8px}
+#msgs{flex:1;overflow-y:auto;padding:8px 12px 12px;display:flex;flex-direction:column;overscroll-behavior:contain}
+.day{align-self:center;background:var(--panel);color:var(--mut);font-size:13px;padding:3px 12px;border-radius:12px;margin:12px 0 6px;position:sticky;top:4px;z-index:1}
+.row{display:flex;margin-top:8px}
+.row.same{margin-top:2px}
+.row.me{justify-content:flex-end}
+.b{max-width:min(80%,520px);padding:7px 11px 6px;border-radius:16px;background:var(--them);cursor:pointer;overflow-wrap:anywhere}
+.me .b{background:var(--me);color:#fff;border-bottom-right-radius:5px}
+.them .b{border-bottom-left-radius:5px}
+.t{white-space:pre-wrap}
+.big{font-size:44px;line-height:1.15;display:block}
+.meta{float:right;margin:7px 0 0 10px;font-size:11px;opacity:.65}
+.who{font-size:13px;font-weight:700}
+.rq{border-left:3px solid currentColor;padding:1px 8px;margin:2px 0 4px;font-size:13px;opacity:.85;display:grid}
+.rq b,.rq span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rx{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;clear:both}
+.chip{border-radius:12px;padding:1px 8px;font-size:14px;background:rgba(127,127,127,.22)}
+.chip.on{outline:1.5px solid currentColor}
+#bar{display:flex;align-items:center;gap:10px;padding:6px 14px;background:var(--panel);border-top:1px solid var(--line);font-size:14px}
+#bar div{flex:1;min-width:0;border-left:3px solid var(--accent);padding-left:8px;display:grid}
+#bar b{color:var(--accent)}
+#bar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mut)}
+.cmp{display:flex;gap:6px;padding:8px 10px;background:var(--panel);align-items:flex-end}
+#emb{width:42px;height:42px;font-size:26px;flex:none;border-radius:50%}
+#emb.on{background:var(--bg)}
+#inp{flex:1;resize:none;max-height:140px;padding:10px 14px;border-radius:20px;border:1px solid var(--line);background:var(--bg)}
+#go{width:42px;height:42px;border-radius:50%;background:var(--accent);color:var(--on);font-size:20px;flex:none}
+#go:disabled{opacity:.4}
+#ep{background:var(--panel);border-top:1px solid var(--line)}
+#et{display:flex;overflow-x:auto;border-bottom:1px solid var(--line)}
+#et button{font-size:22px;padding:6px 12px;flex:none;opacity:.5}
+#et button.on{opacity:1;box-shadow:inset 0 -3px var(--accent)}
+#eg{height:210px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));padding:6px;align-content:start}
+#eg button{font-size:28px;padding:4px;border-radius:10px}
+#eg button:active{background:var(--bg)}
+#sheet{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;justify-content:center;z-index:5}
+#sheet>div{background:var(--sheet);width:min(420px,100%);border-radius:20px 20px 0 0;padding-bottom:env(safe-area-inset-bottom)}
+.emo{display:flex;justify-content:space-around;padding:8px 10px 2px}
+.emo+.emo{padding-top:0;padding-bottom:8px}
+.emo button{font-size:28px;padding:4px}
+.act{display:block;width:100%;padding:14px 20px;text-align:left;border-top:1px solid var(--line)}
+@media(max-width:760px){
+#side{width:100%;border:0}
+#main{display:none}
+.open #side{display:none}
+.open #main{display:flex}
+#back{display:block}}
+</style>
+</head>
+<body>
 
+<div id="setup" hidden><div class="card">
+<h1>Круг 💬</h1>
+<p>Осталось подключить Firebase 🔥:</p>
+<ol>
+<li>Создайте проект на console.firebase.google.com</li>
+<li>Включите Authentication → Email/Password и базу Firestore</li>
+<li>Скопируйте ключи в константу CFG в начале скрипта</li>
+<li>Вставьте правила доступа</li>
+</ol></div></div>
+
+<div id="auth" hidden><form class="card" id="af">
+<h1>Круг 💬</h1>
+<p id="sub">Войдите, чтобы писать друзьям 👋</p>
+<input id="nm" placeholder="😊 Ваше имя" autocomplete="nickname" hidden>
+<input id="em" type="email" placeholder="📧 Почта" autocomplete="email" required>
+<input id="pw" type="password" placeholder="🔑 Пароль (от 6 символов)" autocomplete="current-password" required>
+<div id="err"></div>
+<button class="pri" id="ok">Войти 🚀</button>
+<button class="lnk" type="button" id="sw">Создать аккаунт ✨</button>
+</form></div>
+
+<div id="app" hidden>
+<aside id="side">
+<header><h2>Круг 💬</h2><button class="lnk" id="out">Выйти 👋</button></header>
+<input id="qs" placeholder="🔍 Поиск" type="search">
+<div id="list"></div>
+</aside>
+<section id="main">
+<div id="empty"><div style="font-size:64px">💬</div>Выберите, с кем поговорить ✨</div>
+<div id="chat" hidden>
+<div id="head"><button id="back" aria-label="Назад">‹</button><div class="av" id="hav"></div><div><b id="ht"></b><small id="hs"></small></div></div>
+<div id="msgs"></div>
+<div id="bar" hidden><div><b id="bt"></b><span id="bx"></span></div><button id="bc" aria-label="Отмена">✕</button></div>
+<div id="ep" hidden><div id="et"></div><div id="eg"></div></div>
+<div class="cmp"><button id="emb" aria-label="Смайлики">😊</button><textarea id="inp" rows="1" placeholder="Сообщение 💭"></textarea><button id="go" aria-label="Отправить" disabled>➤</button></div>
+</div>
+</section>
+</div>
+
+<div id="sheet" hidden><div></div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const CFG={apiKey:"AIzaSyB29x6IFNMH9OIxLIiGZIPoSWxup9tL9xg",authDomain:"navi-chat-ced31.firebaseapp.com",projectId:"navi-chat-ced31",appId:"1:742584435955:web:230448b4efd2c608f22386"};
+
+const $=s=>document.querySelector(s);
+const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
+const hm=d=>d.toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'});
+const dm=u=>[me.uid,u].sort().join('_');
+const A=s=>Array.from(s.replace(/\s/g,''));
+const QUICK=A('👍❤️😂😮😢🔥'),MORE=A('🎉🙏👏😍🤔💯');
+const PETS=A('🦊🐼🐨🐯🦁🐸🐵🐧🦄🐙🐰🐻🐶🐱🦉🐬');
+const EMO=[
+['😀',A('😀😃😄😁😆😅🤣😂🙂😉😊😇🥰😍🤩😘😋😛😜🤪😎🤓🥳😏😒😞😔😟😕🙁😣😖😫😩🥺😢😭😤😠😡🤬🤯😳🥵🥶😱😨😰😥😓🤗🤔🤭🤫😶😐😑😬🙄😯😴🤤😷🤒🤕🤢🤮🤧😈👻💀🤡')],
+['👋',A('👋🤚✋🖖👌🤌✌️🤞🤟🤘🤙👈👉👆👇👍👎✊👊🤛🤜👏🙌👐🤲🙏💪🦾👀👂👃🧠🫶💅🤳')],
+['❤️',A('❤️🧡💛💚💙💜🖤🤍🤎💔❣️💕💞💓💗💖💘💝💟💯💢💥💫💦💨💤✨🌟⭐🔥🎉🎊🎁🏆🥇')],
+['🐶',A('🐶🐱🐭🐹🐰🦊🐻🐼🐨🐯🦁🐮🐷🐸🐵🙈🙉🙊🐔🐧🐦🦆🦉🦄🐝🦋🐌🐞🐢🐍🐙🐠🐬🐳🦈🐘🦒🐕🐈')],
+['🍕',A('🍏🍎🍌🍉🍇🍓🍒🍑🥭🍍🥝🍅🥑🌽🥕🍞🧀🍳🥞🍔🍟🌭🍕🌮🍣🍜🍦🍩🍪🎂🍫🍬☕🍵🍺🍷🥂🍹')],
+['⚽',A('⚽🏀🏈⚾🎾🏐🎱🏓🥊🎮🕹️🎲🎯🎸🎹🎤🎧🎬📷💻📱💡📚✏️🎨🚗🚕🚌🚀✈️🏠🏖️🌍🌈☀️🌙⛅❄️🌊')]
+];
+let me,db,auth,FV,users={},chats={},subbed={},cur=null,msgs=[],unsub=null,reply=null,editing=null,reg=false;
+const ts=()=>firebase.firestore.FieldValue.serverTimestamp();
+const myName=()=>users[me.uid]?.name||me.email.split('@')[0];
+const msgRef=m=>db.collection('chats').doc(cur).collection('messages').doc(m.id);
+const onlyEmoji=t=>{const a=Array.from(t.trim());return a.length>0&&a.length<=3&&/^[\p{Extended_Pictographic}\u200d\ufe0f\s]+$/u.test(t)};
+
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+if(!CFG.apiKey)$('#setup').hidden=false;
+else{
+  firebase.initializeApp(CFG);auth=firebase.auth();db=firebase.firestore();FV=firebase.firestore.FieldValue;
+  auth.onAuthStateChanged(u=>u?start(u):($('#auth').hidden=false,$('#app').hidden=true));
+}
+
+/* ---------- вход ---------- */
+$('#sw').onclick=()=>{
+  reg=!reg;$('#nm').hidden=!reg;$('#nm').required=reg;
+  $('#ok').textContent=reg?'Создать аккаунт 🎉':'Войти 🚀';
+  $('#sw').textContent=reg?'У меня уже есть аккаунт 👈':'Создать аккаунт ✨';
+  $('#err').textContent='';
+};
+$('#af').onsubmit=async e=>{
+  e.preventDefault();$('#err').textContent='';
+  try{
+    if(reg){
+      const c=await auth.createUserWithEmailAndPassword($('#em').value,$('#pw').value);
+      await db.collection('users').doc(c.user.uid).set({name:$('#nm').value.trim(),hue:Math.floor(Math.random()*360),emo:PETS[Math.floor(Math.random()*PETS.length)],seen:ts()});
+    }else await auth.signInWithEmailAndPassword($('#em').value,$('#pw').value);
+  }catch(x){
+    $('#err').textContent={'auth/invalid-credential':'😕 Неверная почта или пароль','auth/email-already-in-use':'📧 Эта почта уже занята','auth/weak-password':'🔑 Пароль короче 6 символов'}[x.code]||'😵 Не получилось войти. Проверьте данные и сеть';
+  }
+};
+$('#out').onclick=()=>{unsub&&unsub();auth.signOut();location.reload()};
+
+/* ---------- старт ---------- */
+function start(u){
+  me=u;$('#auth').hidden=true;$('#app').hidden=false;
+  db.collection('users').onSnapshot(s=>{
+    users={};s.forEach(d=>users[d.id]=d.data());
+    ['general',...Object.keys(users).filter(k=>k!==me.uid).map(dm)].forEach(id=>{
+      if(subbed[id])return;
+      subbed[id]=db.collection('chats').doc(id).onSnapshot(d=>{chats[id]=d.exists?d.data({serverTimestamps:'estimate'}):null;renderList()});
+    });
+    if(users[me.uid]&&!users[me.uid].emo)db.collection('users').doc(me.uid).set({emo:PETS[Math.floor(Math.random()*PETS.length)]},{merge:true}).catch(()=>{});
+    renderList();cur&&renderHead();
+  });
+  const beat=()=>db.collection('users').doc(me.uid).set({seen:ts()},{merge:true}).catch(()=>{});
+  beat();setInterval(beat,60000);
+}
+
+/* ---------- список чатов ---------- */
+function entries(){
+  const a=[{id:'general',title:'Общий чат',hue:160,ch:'🌍'}];
+  Object.keys(users).forEach(u=>{if(u!==me.uid)a.push({id:dm(u),peer:u,title:users[u].name||'Без имени',hue:users[u].hue??200,emo:users[u].emo})});
+  a.forEach(e=>{const c=chats[e.id];e.last=c?.last||'';e.ts=c?.ts?c.ts.toDate().getTime():0;e.lu=c?.lastUid});
+  return a.sort((x,y)=>y.ts-x.ts);
+}
+function avatar(e,node){node.textContent=e.ch||e.emo||e.title[0].toUpperCase();node.style.background=`hsl(${e.hue} 45% 42%)`}
+function short(t){
+  if(!t)return'';const n=new Date(),d=new Date(t);
+  return d.toDateString()===n.toDateString()?hm(d):d.toLocaleDateString('ru',{day:'2-digit',month:'2-digit'});
+}
+function renderList(){
+  if(!me)return;
+  const f=$('#qs').value.trim().toLowerCase(),box=$('#list');box.replaceChildren();
+  entries().filter(e=>e.title.toLowerCase().includes(f)).forEach(e=>{
+    const b=el('button','ci'+(e.id===cur?' on':''));
+    const av=el('div','av');avatar(e,av);
+    const tx=el('div','tx'),r1=el('div','r1');
+    r1.append(el('b',0,e.title),el('small',0,short(e.ts)));
+    const r2=el('div','r1');r2.append(el('div','pv',e.last||'Напишите первым 👋'));
+    if(e.ts&&e.lu!==me.uid&&e.id!==cur&&e.ts>(+localStorage['r_'+e.id]||0))r2.append(el('div','dot'));
+    tx.append(r1,r2);b.append(av,tx);b.onclick=()=>open(e.id);box.append(b);
+  });
+}
+$('#qs').oninput=renderList;
+
+/* ---------- чат ---------- */
+function curEntry(){return entries().find(e=>e.id===cur)}
+function renderHead(){
+  const e=curEntry();if(!e)return;avatar(e,$('#hav'));$('#ht').textContent=e.title;
+  if(!e.peer){$('#hs').textContent='👥 Участников: '+Object.keys(users).length;return}
+  const s=users[e.peer]?.seen?.toDate?.();
+  $('#hs').textContent=!s?'':Date.now()-s<150000?'🟢 в сети':'был(а) в '+(s.toDateString()===new Date().toDateString()?hm(s):short(s));
+}
+function open(id){
+  cur=id;localStorage['r_'+id]=Date.now();cancelBar();$('#ep').hidden=true;$('#emb').classList.remove('on');
+  $('#empty').hidden=true;$('#chat').hidden=false;document.body.classList.add('open');
+  renderHead();renderList();unsub&&unsub();$('#msgs').replaceChildren();
+  let first=true;
+  unsub=db.collection('chats').doc(id).collection('messages').orderBy('ts').limitToLast(300).onSnapshot(s=>{
+    msgs=s.docs.map(d=>({id:d.id,...d.data({serverTimestamps:'estimate'})}));
+    drawMsgs(first);first=false;localStorage['r_'+id]=Date.now();renderList();
+  });
+}
+$('#back').onclick=()=>{document.body.classList.remove('open');cur=null;unsub&&unsub();$('#chat').hidden=true;$('#empty').hidden=false;renderList()};
+
+function dayLabel(t){
+  const n=new Date(),y=new Date(Date.now()-864e5);
+  if(t.toDateString()===n.toDateString())return'📅 Сегодня';
+  if(t.toDateString()===y.toDateString())return'📅 Вчера';
+  return t.toLocaleDateString('ru',{day:'numeric',month:'long',...(t.getFullYear()!==n.getFullYear()?{year:'numeric'}:{})});
+}
+function drawMsgs(first){
+  const box=$('#msgs'),stick=first||box.scrollHeight-box.scrollTop-box.clientHeight<120;
+  box.replaceChildren();let day='',prev=null;
+  msgs.forEach(m=>{
+    const t=m.ts?m.ts.toDate():new Date(),mine=m.uid===me.uid;
+    if(t.toDateString()!==day){day=t.toDateString();prev=null;box.append(el('div','day',dayLabel(t)))}
+    const row=el('div','row '+(mine?'me':'them')+(prev===m.uid?' same':'')),b=el('div','b');
+    if(!mine&&cur==='general'&&prev!==m.uid){const n=el('div','who',(users[m.uid]?.emo||'')+' '+m.name);n.style.color=`hsl(${users[m.uid]?.hue??200} 60% 55%)`;b.append(n)}
+    if(m.reply){const q=el('div','rq');q.append(el('b',0,m.reply.n),el('span',0,m.reply.t));b.append(q)}
+    b.append(el('span','t'+(onlyEmoji(m.text)?' big':''),m.text),el('span','meta',(m.edited?'изм. ':'')+hm(t)));
+    const rx=Object.entries(m.rx||{}).filter(([,a])=>a.length);
+    if(rx.length){
+      const r=el('div','rx');
+      rx.forEach(([e,a])=>{const c=el('button','chip'+(a.includes(me.uid)?' on':''),e+' '+a.length);c.onclick=ev=>{ev.stopPropagation();react(m,e)};r.append(c)});
+      b.append(r);
+    }
+    b.onclick=()=>sheet(m);row.append(b);box.append(row);prev=m.uid;
+  });
+  if(stick)box.scrollTop=box.scrollHeight;
+}
+
+/* ---------- действия с сообщением ---------- */
+function react(m,e){
+  const on=m.rx?.[e]?.includes(me.uid);
+  msgRef(m).update(new firebase.firestore.FieldPath('rx',e),on?FV.arrayRemove(me.uid):FV.arrayUnion(me.uid));
+}
+function sheet(m){
+  const s=$('#sheet'),c=s.firstElementChild;c.replaceChildren();
+  [QUICK,MORE].forEach(list=>{
+    const er=el('div','emo');
+    list.forEach(e=>{const b=el('button',0,e);b.onclick=()=>{s.hidden=true;react(m,e)};er.append(b)});
+    c.append(er);
+  });
+  const act=(l,f)=>{const b=el('button','act',l);b.onclick=()=>{s.hidden=true;f()};c.append(b)};
+  act('↩️ Ответить',()=>setBar('reply',m));
+  act('📋 Копировать',()=>navigator.clipboard?.writeText(m.text));
+  if(m.uid===me.uid){
+    act('✏️ Изменить',()=>{setBar('edit',m);$('#inp').value=m.text;fit()});
+    act('🗑️ Удалить',()=>{if(confirm('Удалить сообщение?'))msgRef(m).delete()});
+  }
+  s.hidden=false;
+}
+$('#sheet').onclick=e=>{if(e.target.id==='sheet')e.target.hidden=true};
+
+function setBar(kind,m){
+  cancelBar();
+  if(kind==='reply')reply={n:m.name,t:m.text.slice(0,80)};else editing=m;
+  $('#bt').textContent=kind==='reply'?'↩️ Ответ: '+m.name:'✏️ Изменение сообщения';
+  $('#bx').textContent=m.text;$('#bar').hidden=false;$('#inp').focus();
+}
+function cancelBar(){
+  if(editing)$('#inp').value='';
+  reply=null;editing=null;$('#bar').hidden=true;fit();
+}
+$('#bc').onclick=cancelBar;
+
+/* ---------- смайлики ---------- */
+const tabs=$('#et'),grid=$('#eg');
+function showCat(i){
+  [...tabs.children].forEach((b,j)=>b.classList.toggle('on',i===j));
+  grid.replaceChildren();grid.scrollTop=0;
+  EMO[i][1].forEach(x=>{const b=el('button',0,x);b.onclick=()=>put(x);grid.append(b)});
+}
+EMO.forEach((c,i)=>{const b=el('button',0,c[0]);b.onclick=()=>showCat(i);tabs.append(b)});
+showCat(0);
+function put(x){
+  const i=$('#inp');i.setRangeText(x,i.selectionStart,i.selectionEnd,'end');fit();
+}
+$('#emb').onclick=()=>{
+  const h=$('#ep').hidden=!$('#ep').hidden;
+  $('#emb').classList.toggle('on',!h);$('#emb').textContent=h?'😊':'⌨️';
+};
+
+/* ---------- отправка ---------- */
+function fit(){
+  const i=$('#inp');i.style.height='auto';i.style.height=Math.min(i.scrollHeight,140)+'px';
+  $('#go').disabled=!i.value.trim();
+}
+$('#inp').oninput=fit;
+$('#inp').onkeydown=e=>{
+  if(e.key==='Enter'&&!e.shiftKey&&matchMedia('(pointer:fine)').matches){e.preventDefault();send()}
+};
+$('#go').onclick=send;
+async function send(){
+  const i=$('#inp'),text=i.value.trim();if(!text||!cur)return;
+  const ref=db.collection('chats').doc(cur),r=reply,ed=editing;
+  i.value='';reply=null;editing=null;$('#bar').hidden=true;fit();
+  if(ed){await msgRef(ed).update({text,edited:true});return}
+  ref.collection('messages').add({uid:me.uid,name:myName(),text,ts:ts(),reply:r});
+  ref.set({last:text.slice(0,80),lastUid:me.uid,ts:ts()},{merge:true});
+}
+</script>
+</body>
+</html>
