@@ -270,7 +270,7 @@
 
 <!-- ============ ЧАТЫ ============ -->
 <section class="view" id="v-chats">
-  <h1>Чаты</h1>
+  <h1 style="display:flex;justify-content:space-between;align-items:center">Чаты<button class="btn" id="newRoom" style="font-size:18px">✏️</button></h1>
   <div class="body" style="padding-bottom:0">
     <input class="search" id="chatSearch" type="text" placeholder="Поиск по чатам">
   </div>
@@ -1098,7 +1098,8 @@ const saveCH = () => {
 const FAV = { id: 'me', name: 'Избранное', emoji: '📌' };
 const AVBG = ['#2f97f0,#4fd1a5', '#f5a623,#ef5350', '#a45be0,#3a6fe0', '#3cb54a,#2aa8e0', '#ff5e9c,#ff8a4c', '#1fbf8f,#0b4a3b'];
 const avBg = (id) => { let h = 0; for (const c of String(id)) h += c.charCodeAt(0); return `linear-gradient(135deg,${AVBG[h % AVBG.length]})`; };
-const peer = (id) => id === 'me' ? FAV : CH.contacts.find(c => c.id === id);
+const isRoom = (id) => /^r\d+$/.test(String(id));
+const peer = (id) => id === 'me' ? FAV : isRoom(id) ? (CH.rooms || []).find(x => x.id === id) : CH.contacts.find(c => c.id === id);
 const chatOf = (id) => CH.chats[id] || (CH.chats[id] = cloudCfg
   ? { msgs: [], folder: (META[id] || {}).f || '', clearedAt: (META[id] || {}).c || 0, readAt: (META[id] || {}).r || 0 }
   : { msgs: [], folder: '' });
@@ -1140,10 +1141,10 @@ function renderChats() {
     ST.folders.map(f => `<button class="${curFolder === f.id ? 'on' : ''}" data-ftab="${f.id}">${f.emoji} ${esc(f.name)}</button>`).join('');
 
   const drafts = getDrafts();
-  const ids = ['me'].concat(CH.contacts.map(c => c.id)).filter(id => {
+  const ids = ['me'].concat(CH.contacts.map(c => c.id), (CH.rooms || []).map(x => x.id)).filter(id => {
     const c = CH.chats[id];
     if (!peer(id)) return false;
-    if (id !== 'me' && !lastMsg(id) && !drafts[id]) return false;
+    if (id !== 'me' && !isRoom(id) && !lastMsg(id) && !drafts[id]) return false;
     if (curFolder !== 'all' && !(c && c.folder === curFolder)) return false;
     if (q) {
       const inName = peer(id).name.toLowerCase().includes(q);
@@ -1176,7 +1177,7 @@ function renderMsgs() {
         if (chatQ && !m.text.toLowerCase().includes(chatQ)) return '';
         const inn = m.from && m.from !== 'me';
         const st = inn ? '' : (m.read || curChat === 'me' ? ' ✓✓' : ' ✓');
-        return `<div class="bub ${inn ? 'in' : 'out'}" data-mi="${i}" style="font-size:${ST.fontSize}px">${m.reply ? `<div class="rp">${esc(m.reply.slice(0, 80))}</div>` : ''}${esc(m.text)}${m.rx && m.rx.length ? `<div class="rx">${m.rx.map(x => `<i>${x}</i>`).join('')}</div>` : ''}<small>${m.fwd ? '↪ ' : ''}${m.edited ? 'изм. ' : ''}${fmtT(m.ts)}${st}</small></div>`;
+        return `<div class="bub ${inn ? 'in' : 'out'}" data-mi="${i}" style="font-size:${ST.fontSize}px">${m.name && inn ? `<b style="display:block;font-size:12px;color:var(--accent)">${esc(m.name)}</b>` : ''}${m.reply ? `<div class="rp">${esc(m.reply.slice(0, 80))}</div>` : ''}${esc(m.text)}${m.rx && m.rx.length ? `<div class="rx">${m.rx.map(x => `<i>${x}</i>`).join('')}</div>` : ''}<small>${m.fwd ? '↪ ' : ''}${m.edited ? 'изм. ' : ''}${fmtT(m.ts)}${st}</small></div>`;
       }).join('')
     : '<div class="empty" style="color:#fff">Сообщений пока нет.<br>Напишите первое.</div>');
 }
@@ -1189,7 +1190,8 @@ function openChat(id) {
   const av = $('chatAv');
   av.textContent = p.photo ? '' : p.emoji;
   av.style.background = p.photo ? `url('${p.photo}') center/cover` : avBg(id);
-  $('chatName').textContent = p.name;
+  $('chatName').textContent = p.name + (isRoom(id) ? (p.type === 'channel' ? ' · подписчиков: ' : ' · участников: ') + p.n : '');
+  document.querySelector('#v-chat .composer').style.display = isRoom(id) && p.type === 'channel' && !p.admin ? 'none' : '';
   $('msgs').style.background = WALLS[ST.wallpaper];
   renderMsgs();
   $('msgIn').value = getDrafts()[id] || '';
@@ -1243,6 +1245,7 @@ $('chatMenu').onclick = () => {
     <button class="opt" data-m="pin">${(CH.chats[curChat] || {}).pin ? '📌 Открепить чат' : '📌 Закрепить чат'}</button>
     <button class="opt" data-m="search">🔍 Поиск в чате</button>
     <button class="opt" data-m="clear">🧹 Очистить историю</button>
+    ${isRoom(curChat) ? '<button class="opt" data-nr="add">➕ Добавить друзей</button><button class="opt" data-nr="leave">🚪 Покинуть</button>' : ''}
     <button class="opt" data-m="close">Закрыть</button>`;
   $('modal').classList.add('on');
 };
@@ -1515,12 +1518,12 @@ async function sync() {
   CH.contacts = d.friends.filter(f => f.status === 'ok').map(f => ({ id: String(f.id), name: f.username, username: f.username, emoji: '🙂' }));
   const oldReqs = (CH.reqs || []).length;
   CH.reqs = d.friends.filter(f => f.status === 'in'); CH.outs = d.friends.filter(f => f.status === 'out');
-  lastFv = d.friends.map(f => f.id + f.status).join();
+  lastFv = d.fv; CH.rooms = d.rooms;
   if (CH.reqs.length > oldReqs && lastMid) toast('Новая заявка в друзья 👋');
   d.messages.forEach(m => {
-    const mine = m.from === d.me.id, pid = String(mine ? m.to : m.from);
+    const mine = m.from === d.me.id, pid = String(isRoom(m.to) ? m.to : mine ? m.to : m.from);
     const c = chats[pid] || (chats[pid] = { msgs: [], folder: (old[pid] || {}).folder || '', pin: (old[pid] || {}).pin });
-    c.msgs.push({ text: m.text, ts: m.ts, from: mine ? 'me' : pid });
+    c.msgs.push({ text: m.text, ts: m.ts, from: mine ? 'me' : pid, name: m.fn });
     if (m.id > lastMid) lastMid = m.id;
   });
   CH.chats = chats; saveCH(); renderChats(); renderContacts(); if (curChat) renderMsgs();
@@ -1528,8 +1531,8 @@ async function sync() {
 function incoming(m) {
   if (m.id <= lastMid) return;
   lastMid = m.id;
-  const pid = String(m.from), c = chatOf(pid);
-  c.msgs.push({ text: m.text, ts: m.ts, from: pid }); saveCH(); renderChats(); renderContacts();
+  const pid = isRoom(m.to) ? m.to : String(m.from), c = chatOf(pid);
+  c.msgs.push({ text: m.text, ts: m.ts, from: pid, name: m.fn }); saveCH(); renderChats(); renderContacts();
   if (curChat === pid) { renderMsgs(); scrollEnd(); }
 }
 function startPoll() {
@@ -1541,7 +1544,7 @@ function startPoll() {
       d.messages.forEach(incoming);
       if (lastFv !== null && d.fv !== lastFv) sync().catch(() => {});
     } catch (e) {}
-  }, 3000);
+  }, 1500);
 }
 function connectWS() {
   if (ws) { ws.onclose = null; ws.close(); }
@@ -1553,7 +1556,7 @@ function connectWS() {
   };
   ws.onclose = () => { if (TOKEN) setTimeout(connectWS, 3000); };
 }
-async function startServer() { await sync(); connectWS(); startPoll(); $('v-auth').classList.remove('on'); show('v-chats'); }
+async function startServer() { await sync(); startPoll(); $('v-auth').classList.remove('on'); show('v-chats'); }
 function srvLogout() {
   TOKEN = ''; try { localStorage.removeItem(TK); localStorage.removeItem(AK); } catch (e) {}
   if (ws) { ws.onclose = null; ws.close(); }
@@ -1579,6 +1582,30 @@ async function serverAuth() {
 document.addEventListener('click', (e) => {
   const ac = e.target.closest('[data-acc]');
   if (ac) api('/friends/accept', 'POST', { id: ac.dataset.acc }).then(sync).catch(x => toast(x.message));
+});
+/* ---------- Группы и каналы ---------- */
+const nrSheet = (h) => { $('sheet').innerHTML = h; $('modal').classList.add('on'); };
+const friendPick = () => CH.contacts.length ? CH.contacts.map(c => `<label class="sw-row"><span class="t">@${esc(c.username)}</span><input type="checkbox" class="sw" value="${c.id}"></label>`).join('') : '<div class="lead">Друзей пока нет — добавьте их во вкладке «Контакты»</div>';
+const picked = () => [...$('sheet').querySelectorAll('input.sw:checked')].map(i => +i.value);
+$('newRoom').onclick = () => {
+  if (!SRV) return toast('Группы и каналы работают при запуске через server.js');
+  nrSheet('<h2>Создать</h2><button class="opt" data-nr="g">👥 Новая группа</button><button class="opt" data-nr="c">📢 Новый канал</button><button class="opt" data-nr="j">🔎 Найти канал по @имени</button><button class="opt" data-nr="x">Закрыть</button>');
+};
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-nr]'); if (!b) return;
+  const k = b.dataset.nr, close = () => $('modal').classList.remove('on');
+  if (k === 'x') return close();
+  try {
+    if (k === 'g' || k === 'c') nrSheet(`<h2>${k === 'g' ? 'Новая группа' : 'Новый канал'}</h2><input class="search" id="nrName" maxlength="64" placeholder="Название">${k === 'c' ? '<input class="search" id="nrHandle" maxlength="32" placeholder="Публичное @имя (необязательно)">' : ''}<div class="lead">Участники</div>${friendPick()}<button class="btn" style="width:100%;margin-top:12px" data-nr="mk${k}">Создать</button>`);
+    else if (k === 'mkg' || k === 'mkc') {
+      const r = await api('/rooms', 'POST', { type: k === 'mkg' ? 'group' : 'channel', name: $('nrName').value, handle: $('nrHandle') ? $('nrHandle').value : '', members: picked() });
+      close(); await sync(); openChat(r.id);
+    } else if (k === 'j') nrSheet('<h2>Найти канал</h2><input class="search" id="nrHandle" placeholder="@имя_канала"><button class="btn" style="width:100%" data-nr="join">Подписаться</button>');
+    else if (k === 'join') { const r = await api('/rooms/join', 'POST', { handle: $('nrHandle').value }); close(); await sync(); openChat(r.id); }
+    else if (k === 'add') nrSheet(`<h2>Добавить</h2>${friendPick()}<button class="btn" style="width:100%;margin-top:12px" data-nr="adds">Добавить</button>`);
+    else if (k === 'adds') { await api('/rooms/' + curChat + '/members', 'POST', { ids: picked() }); close(); await sync(); toast('Готово ✓'); }
+    else if (k === 'leave' && confirm('Покинуть чат?')) { await api('/rooms/' + curChat + '/leave', 'POST'); close(); curChat = null; await sync(); show('v-chats'); }
+  } catch (x) { toast(x.message); }
 });
 if (SRV) { if (TOKEN) startServer().catch(() => {}); else renderAuth(); }
 else if (!jget(AK, null)) renderAuth();
