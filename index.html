@@ -1497,7 +1497,7 @@ document.addEventListener('click', async (e) => {
 });
 
 /* ---------- Подключение к серверу ---------- */
-const TK = 'liks_token'; let TOKEN = '', ws = null;
+const TK = 'liks_token'; let TOKEN = '', ws = null, lastMid = 0, lastFv = null, pollT = null;
 try { TOKEN = localStorage.getItem(TK) || ''; } catch (e) {}
 async function api(path, method = 'GET', data) {
   const r = await fetch('/api' + path, { method, headers: { 'Content-Type': 'application/json', ...(TOKEN ? { Authorization: 'Bearer ' + TOKEN } : {}) }, body: data ? JSON.stringify(data) : undefined });
@@ -1506,20 +1506,42 @@ async function api(path, method = 'GET', data) {
   return d;
 }
 function reqHTML() {
-  return (CH.reqs || []).map(r => `<div class="crow"><div class="cav" style="background:${avBg(r.id)}">🙂</div><div class="cmain"><div class="cname">@${esc(r.username)}</div><div class="cprev">Хочет добавить вас в друзья</div></div><button class="btn" data-acc="${r.id}">✓</button></div>`).join('');
+  return (CH.outs || []).map(r => `<div class="crow"><div class="cav" style="background:${avBg(r.id)}">🕓</div><div class="cmain"><div class="cname">@${esc(r.username)}</div><div class="cprev">Заявка отправлена — ждём подтверждения</div></div></div>`).join('') + (CH.reqs || []).map(r => `<div class="crow"><div class="cav" style="background:${avBg(r.id)}">🙂</div><div class="cmain"><div class="cname">@${esc(r.username)}</div><div class="cprev">Хочет добавить вас в друзья</div></div><button class="btn" data-acc="${r.id}">✓</button></div>`).join('');
 }
 async function sync() {
   const d = await api('/sync');
   ST.username = d.me.username; if (!ST.name) ST.name = d.me.username; saveST(); updAccountSub();
   const old = CH.chats, chats = { me: old.me || { msgs: [], folder: '' } };
   CH.contacts = d.friends.filter(f => f.status === 'ok').map(f => ({ id: String(f.id), name: f.username, username: f.username, emoji: '🙂' }));
-  CH.reqs = d.friends.filter(f => f.status === 'in');
+  const oldReqs = (CH.reqs || []).length;
+  CH.reqs = d.friends.filter(f => f.status === 'in'); CH.outs = d.friends.filter(f => f.status === 'out');
+  lastFv = d.friends.map(f => f.id + f.status).join();
+  if (CH.reqs.length > oldReqs && lastMid) toast('Новая заявка в друзья 👋');
   d.messages.forEach(m => {
     const mine = m.from === d.me.id, pid = String(mine ? m.to : m.from);
     const c = chats[pid] || (chats[pid] = { msgs: [], folder: (old[pid] || {}).folder || '', pin: (old[pid] || {}).pin });
     c.msgs.push({ text: m.text, ts: m.ts, from: mine ? 'me' : pid });
+    if (m.id > lastMid) lastMid = m.id;
   });
   CH.chats = chats; saveCH(); renderChats(); renderContacts(); if (curChat) renderMsgs();
+}
+function incoming(m) {
+  if (m.id <= lastMid) return;
+  lastMid = m.id;
+  const pid = String(m.from), c = chatOf(pid);
+  c.msgs.push({ text: m.text, ts: m.ts, from: pid }); saveCH(); renderChats(); renderContacts();
+  if (curChat === pid) { renderMsgs(); scrollEnd(); }
+}
+function startPoll() {
+  if (pollT) clearInterval(pollT);
+  pollT = setInterval(async () => {
+    if (!TOKEN || document.hidden) return;
+    try {
+      const d = await api('/poll?since=' + lastMid);
+      d.messages.forEach(incoming);
+      if (lastFv !== null && d.fv !== lastFv) sync().catch(() => {});
+    } catch (e) {}
+  }, 3000);
 }
 function connectWS() {
   if (ws) { ws.onclose = null; ws.close(); }
@@ -1527,19 +1549,16 @@ function connectWS() {
   ws.onmessage = (ev) => {
     let d; try { d = JSON.parse(ev.data); } catch (e) { return; }
     if (d.t === 'sync') sync().catch(() => {});
-    if (d.t === 'msg') {
-      const pid = String(d.m.from), c = chatOf(pid);
-      c.msgs.push({ text: d.m.text, ts: d.m.ts, from: pid }); saveCH(); renderChats();
-      if (curChat === pid) { renderMsgs(); scrollEnd(); }
-    }
+    if (d.t === 'msg') incoming(d.m);
   };
   ws.onclose = () => { if (TOKEN) setTimeout(connectWS, 3000); };
 }
-async function startServer() { await sync(); connectWS(); $('v-auth').classList.remove('on'); show('v-chats'); }
+async function startServer() { await sync(); connectWS(); startPoll(); $('v-auth').classList.remove('on'); show('v-chats'); }
 function srvLogout() {
   TOKEN = ''; try { localStorage.removeItem(TK); localStorage.removeItem(AK); } catch (e) {}
   if (ws) { ws.onclose = null; ws.close(); }
-  CH = { contacts: [], chats: {}, reqs: [] }; renderAuth();
+  if (pollT) clearInterval(pollT);
+  lastMid = 0; lastFv = null; CH = { contacts: [], chats: {}, reqs: [], outs: [] }; renderAuth();
 }
 async function serverAuth() {
   const email = $('aEmail').value.trim().toLowerCase(), pw = $('aPass').value, reg = authMode === 'up';

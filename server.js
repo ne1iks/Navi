@@ -22,6 +22,8 @@ const UN = /^[a-zA-Z][a-zA-Z0-9_]{4,31}$/;
 const hits = new Map();
 const limited = (ip) => { const n = Date.now(), a = (hits.get(ip) || []).filter(x => n - x < 60000); a.push(n); hits.set(ip, a); return a.length > 10; };
 
+const friendsOf = (me) => db.prepare('SELECT f.b, f.status, u.id uid, u.username FROM friends f JOIN users u ON u.id = (CASE WHEN f.a=? THEN f.b ELSE f.a END) WHERE f.a=? OR f.b=? ORDER BY u.id').all(me, me, me)
+  .map(r => ({ id: r.uid, username: r.username, status: r.status === 'ok' ? 'ok' : (r.b === me ? 'in' : 'out') }));
 const socks = new Map();
 const push = (id, o) => (socks.get(id) || []).forEach(w => w.readyState === 1 && w.send(JSON.stringify(o)));
 const out = (res, code, o) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(o)); };
@@ -59,10 +61,14 @@ const server = http.createServer(async (req, res) => {
     if (!me) return out(res, 401, { error: 'Нужно войти' });
     if (p === '/api/sync') {
       const u = db.prepare('SELECT id,username FROM users WHERE id=?').get(me); if (!u) return out(res, 401, { error: 'Нужно войти' });
-      const fr = db.prepare('SELECT f.b, f.status, u.id uid, u.username FROM friends f JOIN users u ON u.id = (CASE WHEN f.a=? THEN f.b ELSE f.a END) WHERE f.a=? OR f.b=?').all(me, me, me);
-      const friends = fr.map(r => ({ id: r.uid, username: r.username, status: r.status === 'ok' ? 'ok' : (r.b === me ? 'in' : 'out') }));
-      const messages = db.prepare('SELECT f "from", t "to", text, ts FROM messages WHERE f=? OR t=? ORDER BY ts DESC LIMIT 2000').all(me, me).reverse();
+      const friends = friendsOf(me);
+      const messages = db.prepare('SELECT id, f "from", t "to", text, ts FROM messages WHERE f=? OR t=? ORDER BY ts DESC LIMIT 2000').all(me, me).reverse();
       return out(res, 200, { me: u, friends, messages });
+    }
+    if (p === '/api/poll') {   // запасной путь, если WebSocket не работает (прокси, мобильная сеть)
+      const since = +new URL(req.url, 'http://x').searchParams.get('since') || 0;
+      const messages = db.prepare('SELECT id, f "from", text, ts FROM messages WHERE t=? AND id>? ORDER BY id LIMIT 500').all(me, since);
+      return out(res, 200, { messages, fv: friendsOf(me).map(f => f.id + f.status).join() });
     }
     if (p === '/api/friends' && req.method === 'POST') {
       const t = db.prepare('SELECT id FROM users WHERE username=?').get(String(b.username || '').trim());
@@ -87,8 +93,8 @@ const server = http.createServer(async (req, res) => {
       const to = +b.to, text = String(b.text || '').slice(0, 4000);
       if (!to || !text.trim()) return out(res, 400, { error: 'Пустое сообщение' });
       if (!db.prepare("SELECT 1 FROM friends WHERE status='ok' AND ((a=? AND b=?) OR (a=? AND b=?))").get(me, to, to, me)) return out(res, 403, { error: 'Писать можно только друзьям' });
-      const ts = Date.now(); db.prepare('INSERT INTO messages(f,t,text,ts) VALUES(?,?,?,?)').run(me, to, text, ts);
-      push(to, { t: 'msg', m: { from: me, text, ts } }); return out(res, 200, { ok: 1 });
+      const ts = Date.now(), r = db.prepare('INSERT INTO messages(f,t,text,ts) VALUES(?,?,?,?)').run(me, to, text, ts);
+      push(to, { t: 'msg', m: { id: Number(r.lastInsertRowid), from: me, text, ts } }); return out(res, 200, { ok: 1 });
     }
     out(res, 404, { error: 'Не найдено' });
   } catch (e) { out(res, 400, { error: 'Некорректный запрос' }); }
