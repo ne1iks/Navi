@@ -445,7 +445,8 @@ function renderProf(){
   PV.phone&&rows.push([PV.phone,'Телефон']);u.username&&rows.push(['@'+u.username,'Имя пользователя']);
   u.bio&&rows.push([u.bio,'О себе']);u.bd&&rows.push([dfmt(u.bd),'День рождения']);
   rows.push([(u.bal||0)+' 💠','Баланс']);
-  const inf=el('div','sec pinf');rows.forEach(([a,b])=>{const r=el('div','pr');r.append(el('div',0,a),el('small',0,b));inf.append(r)});c.append(inf);
+  u.username===OWNER_UN&&rows.push([me.uid,OWNER_UID&&OWNER_UID!==me.uid?'⚠️ Этот ID не совпадает с OWNER_UID в index.html! Нажмите, чтобы скопировать':'Ваш ID — нажмите, чтобы скопировать']);
+  const inf=el('div','sec pinf');rows.forEach(([a,b])=>{const r=el('div','pr');r.append(el('div',0,a),el('small',0,b));if(a===me.uid)r.onclick=()=>{navigator.clipboard?.writeText(me.uid).then(()=>alert('ID скопирован'),()=>alert(me.uid))};inf.append(r)});c.append(inf);
   const tb=el('div','ptb');
   [['posts','Публикации'],['arch','Архив публикаций'],['gifts','Подарки 🚀']].forEach(([k,t])=>{const b=el('button','chip'+(PT===k?' on':''),t);b.onclick=()=>{PT=k;renderProf()};tb.append(b)});
   c.append(tb);
@@ -486,7 +487,7 @@ const isOwner=id=>OWNER_UID?id===OWNER_UID:(users[id]?.username||'')===OWNER_UN;
 const roleOf=id=>isOwner(id)?'owner':users[id]?.role==='admin'?'admin':'';
 const badge=id=>{const r=roleOf(id);return r?el('span','rb '+(r==='owner'?'own':'adm'),r==='owner'?'OWNER':'ADMIN'):null};
 const setRole=(id,on)=>db.collection('users').doc(id).set({role:on?'admin':FV.delete()},{merge:true});
-const noRights='Не удалось. Проверьте правила Firestore: владелец должен иметь право менять чужие профили.';
+const fail=e=>{console.error(e);alert('Не удалось ['+(e?.code||e?.message||e)+']. Если permission-denied — проверьте правила Firestore и совпадение OWNER_UID с вашим ID.')};
 const dfmt=v=>new Date(v+'T00:00').toLocaleDateString('ru',{day:'numeric',month:'long',year:'numeric'});
 const extras=u=>{
   const a=[];if(u.bd)a.push(el('p',0,'🎂 '+dfmt(u.bd)));
@@ -608,7 +609,7 @@ async function sendMedia(kind,blob,extra={}){
     await mr.set({uid:me.uid,name:myName(),text:cap,ts:ts(),reply:r,kind,n,mime:blob.type,size:by.length,...extra});
     ref.set({last:KL[kind]+(cap?' '+cap.slice(0,60):''),lastUid:me.uid,ts:ts(),auto:false,typ:{[me.uid]:0},rd:{[me.uid]:ts()},dl:{[me.uid]:ts()}},{merge:true});
     uref().set({st:{msgs:FV.increment(1),chats:FV.arrayUnion(cid)}},{merge:true}).catch(()=>{});
-  }catch(e){alert('Не удалось отправить. Проверьте сеть и правила Firestore.')}
+  }catch(e){console.error(e);alert('Не удалось отправить ['+(e?.code||e?.message||e)+']. Если permission-denied — добавьте в правила Firestore доступ к chats/{chat}/messages/{msg}/parts/{part}.')}
   busy();
 }
 const takeCap=()=>{const i=$('#inp'),t=i.value.trim();i.value='';fit();return t};
@@ -637,17 +638,26 @@ function mediaEl(m){
     w.onclick=e=>{stop(e);i.src&&panel('Фото',c=>{const x=new Image();x.src=i.src;x.style.cssText='width:100%;display:block';c.append(x)})};
   }else if(m.kind==='voice'){
     w.className='vc';w.onclick=stop;
-    const b=el('button','vp','▶'),pg=el('div','pg'),i=el('i'),t=el('span','vt',fmt(m.dur||0));pg.append(i);w.append(b,pg,t);let a;
+    const b=el('button','vp','▶'),pg=el('div','pg'),i=el('i'),t=el('span','vt',fmt(m.dur||0));pg.append(i);w.append(b,pg,t);let a=null;
+    const setup=u=>{a=new Audio(u);a.preload='auto';
+      a.ontimeupdate=()=>{i.style.width=Math.min(100,a.currentTime/(m.dur||1)*100)+'%';t.textContent=fmt(a.currentTime)};
+      a.onended=()=>{i.style.width='0';t.textContent=fmt(m.dur||0)};
+      a.onpause=()=>b.textContent='▶';
+      a.onplay=()=>{b.textContent='⏸';playing&&playing!==a&&playing.pause();playing=a};
+      a.onerror=()=>{b.textContent='⚠️'}};
+    const ready=blobUrl(cid,rm).then(u=>{setup(u);return 1}).catch(()=>0);
     b.onclick=async()=>{
-      if(!a){b.textContent='…';try{a=new Audio(await blobUrl(cid,rm))}catch{b.textContent='⚠️';return}
-        a.ontimeupdate=()=>{i.style.width=Math.min(100,a.currentTime/(m.dur||1)*100)+'%';t.textContent=fmt(a.currentTime)};
-        a.onended=()=>{i.style.width='0';t.textContent=fmt(m.dur||0)};a.onpause=()=>b.textContent='▶';a.onplay=()=>{b.textContent='⏸';playing&&playing!==a&&playing.pause();playing=a}}
-      a.paused?a.play():a.pause();
+      if(!a){b.textContent='…';await ready;b.textContent=a?'▶':'⚠️';return}
+      if(a.paused)a.play().catch(x=>{b.textContent='▶';alert('Не удалось воспроизвести ['+(x?.name||x)+']')});else a.pause();
     };
   }else if(m.kind==='circle'){
     w.className='cr';const v=document.createElement('video');v.playsInline=true;w.append(v,el('span','cd',fmt(m.dur||0)));let ld=0;
     v.onplay=()=>{w.classList.add('pl');playing&&playing!==v&&playing.pause();playing=v};v.onpause=()=>w.classList.remove('pl');v.onended=()=>{v.currentTime=0};
-    w.onclick=async e=>{stop(e);if(!ld){ld=1;try{v.src=await blobUrl(cid,rm)}catch{ld=0;return}}v.paused?v.play():v.pause()};
+    const ready=blobUrl(cid,rm).then(u=>{v.src=u;return 1}).catch(()=>0);
+    w.onclick=async e=>{stop(e);
+      if(!v.src){await ready;if(!v.src)alert('Не удалось загрузить кружок');return}
+      if(v.paused)v.play().catch(x=>alert('Не удалось воспроизвести ['+(x?.name||x)+']'));else v.pause();
+    };
   }else{
     w.className='vd';w.onclick=stop;const b=el('button','vb',`▶ Видео · ${fmt(m.dur||0)} · ${(m.size/1048576).toFixed(1)} МБ`);w.append(b);
     b.onclick=async()=>{b.textContent='Загрузка…';try{const v=document.createElement('video');v.controls=true;v.playsInline=true;v.src=await blobUrl(cid,rm);w.replaceChildren(v);v.play().catch(()=>{})}catch{b.textContent='⚠️ Не загрузилось'}};
@@ -806,7 +816,7 @@ function reveal(x,t,fail){
 function renderNft(){
   const c=$('#nft'),u=users[me.uid]||{},g=el('div','og seg');
   c.replaceChildren(el('div','ph','NFT'));
-  if(isOwner(me.uid)){const gb=el('button','act','🎁 Выдать NFT по юзернейму');gb.style.cssText='margin:0 16px 8px;width:auto;border:1.5px solid #f0a030;border-radius:14px;text-align:center;font-weight:700;display:block;width:calc(100% - 32px)';gb.onclick=giveByUn;c.append(gb)}
+  if(isOwner(me.uid)){const gb=el('button','act','🎁 Выдать NFT по юзернейму');gb.style.cssText='margin:0 16px 8px;width:auto;border:1.5px solid #f0a030;border-radius:14px;text-align:center;font-weight:700;display:block;width:calc(100% - 32px)';gb.onclick=giveByUn;c.append(gb);if(!OWNER_UID)c.append(el('div','note','⚠️ В index.html не задан OWNER_UID. Вставьте ID из профиля в const OWNER_UID=\'\'.'))}
   [['col','Коллекция'],['task','Задания'],['case','Кейсы'],['up','Апгрейд'],['mkt','Рынок'],['trd','Обмен'],['top','Рейтинг']].forEach(([k,t])=>{const b=el('button','chip'+(nt===k?' on':''),t);b.onclick=()=>{nt=k;renderNft()};g.append(b)});
   c.append(g);({col:rCol,task:rTask,case:rCase,up:rUp,mkt:rMkt,trd:rTrd,top:rTop})[nt](c,u);
 }
@@ -1103,7 +1113,7 @@ function profile(id){
     if(n&&n.trim())await db.collection('users').doc(me.uid).update({name:n.trim().slice(0,20)});
   });
   if(isOwner(me.uid)){
-    if(id!==me.uid&&!isOwner(id))mkAct(c,u.role==='admin'?'Снять админа':'Назначить админом',()=>setRole(id,u.role!=='admin').catch(()=>alert(noRights)));
+    if(id!==me.uid&&!isOwner(id))mkAct(c,u.role==='admin'?'Снять админа':'Назначить админом',()=>setRole(id,u.role!=='admin').catch(fail));
   }
   mkAct(c,'Все люди',people);
   s.hidden=false;
@@ -1115,7 +1125,7 @@ function adminsPanel(){
       let on=u.role==='admin';
       const b=el('button','act tg'),w=el('span',0,on?'ADMIN ✓':'');
       b.append(el('span',0,(full(u)||'Без имени')+(u.username?' @'+u.username:'')),w);
-      b.onclick=()=>setRole(id,!on).then(()=>{on=!on;w.textContent=on?'ADMIN ✓':''},()=>alert(noRights));
+      b.onclick=()=>setRole(id,!on).then(()=>{on=!on;w.textContent=on?'ADMIN ✓':''},fail);
       c.append(b);
     });
   });
@@ -1146,7 +1156,7 @@ async function giveNft(id,x){
   try{
     await db.collection('users').doc(id).set({nft:{[x.id]:FV.increment(n)}},{merge:true});
     alert('Выдано: '+x.e+' '+x.n+' ×'+n);
-  }catch(e){alert(noRights)}
+  }catch(e){fail(e)}
 }
 /* ---------- события чата: доставка, прочтение, печатает, уведомления ---------- */
 const NT={},DL={},RD={};let rdKey='',lastTyp=0,SWR=null,sq='';
@@ -1394,7 +1404,7 @@ async function giveBal(id){
   const v=await ask('Сколько 💠 выдать?',{val:'100',type:'number',hint:'От 1 до 1 000 000'});
   if(v===null)return;const n=Math.floor(+v);
   if(!(n>=1&&n<=1000000))return alert('Введите число от 1 до 1 000 000');
-  try{await db.collection('users').doc(id).set({bal:FV.increment(n)},{merge:true});alert('Выдано: '+n+' 💠')}catch{alert(noRights)}
+  try{await db.collection('users').doc(id).set({bal:FV.increment(n)},{merge:true});alert('Выдано: '+n+' 💠')}catch(e){fail(e)}
 }
 $('#ppl').onclick=people;
 $('#head').onclick=e=>{
