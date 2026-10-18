@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Наш чат</title>
+<style>
+:root{--bg:#f6f5f1;--sf:#fff;--tx:#1d1d1b;--mu:#6f6e68;--ac:#4f46e5;--bd:#e3e1d9}
+@media (prefers-color-scheme:dark){:root{--bg:#17171a;--sf:#232328;--tx:#ececea;--mu:#9a9a94;--ac:#6d66f0;--bd:#33333a}}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#app{height:100%;display:flex}
+.pane{display:flex;flex-direction:column;height:100%;min-width:0}
+#side{width:100%;border-right:1px solid var(--bd)}#main{width:100%}
+@media(min-width:800px){#side{width:320px;flex:none}}
+@media(max-width:799px){.chat-open #side{display:none}#main{display:none}.chat-open #main{display:flex}}
+header{padding:12px 14px;background:var(--sf);border-bottom:1px solid var(--bd);display:flex;gap:8px;align-items:center;font-weight:600}
+header .sp{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ib{background:none;color:var(--ac);padding:4px 10px;font-size:20px;border-radius:8px}
+#chats,#list{flex:1;overflow-y:auto}
+.c{padding:12px 14px;border-bottom:1px solid var(--bd);cursor:pointer;background:var(--sf)}
+.c.on{background:var(--bg)}.c b{display:block}.c span{color:var(--mu);font-size:14px}
+#list{padding:12px;display:flex;flex-direction:column;gap:6px}
+.m{max-width:82%;padding:8px 12px;border-radius:16px;background:var(--sf);border:1px solid var(--bd);align-self:flex-start;overflow-wrap:anywhere;cursor:pointer}
+.m.me{align-self:flex-end;background:var(--ac);color:#fff;border-color:transparent}
+.n{font-size:12px;font-weight:600;color:var(--ac)}.me .n{display:none}
+.q{font-size:13px;border-left:3px solid var(--ac);padding-left:8px;margin:2px 0 4px;opacity:.8}
+.me .q{border-color:#fff}
+.m img{max-width:100%;border-radius:10px;display:block;margin:4px 0}
+.t{font-size:11px;opacity:.7;text-align:right}
+.rx{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+.rx span{font-size:13px;background:rgba(127,127,127,.18);border-radius:10px;padding:1px 7px}
+.act{display:flex;gap:6px;margin-top:4px}.act button{padding:2px 8px;font-size:16px;background:rgba(127,127,127,.2);color:inherit;border-radius:10px}
+#rp{padding:6px 14px;background:var(--sf);border-top:1px solid var(--bd);font-size:13px;color:var(--mu);display:flex;justify-content:space-between}
+form{display:flex;gap:6px;padding:10px 12px;background:var(--sf);border-top:1px solid var(--bd)}
+input[type=text],input[type=email],input[type=password]{flex:1;min-width:0;font:inherit;padding:10px 14px;border-radius:22px;border:1px solid var(--bd);background:var(--bg);color:var(--tx)}
+button{font:inherit;border:0;border-radius:22px;padding:10px 16px;background:var(--ac);color:#fff;font-weight:600;cursor:pointer}
+#login{margin:auto;text-align:center;padding:12vh 24px 24px;width:100%;max-width:360px}#err{color:#d33;font-size:14px;margin-top:10px;min-height:20px}
+#lf{flex-direction:column;border:0;background:none;padding:0;margin-top:12px}#lf input{flex:none}
+#lf .ib{font-size:14px;font-weight:400;padding:4px}
+#signin{background:var(--sf);color:var(--tx);border:1px solid var(--bd);margin-top:14px;width:100%}
+.empty{margin:auto;color:var(--mu);padding:20px;text-align:center}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div id="login"><h2>Наш чат</h2>
+ <form id="lf">
+  <input type="text" id="nm" placeholder="Ваше имя" maxlength="40" autocomplete="name" hidden>
+  <input type="email" id="em" placeholder="E-mail" autocomplete="email" required>
+  <input type="password" id="pw" placeholder="Пароль (от 6 символов)" minlength="6" autocomplete="current-password" required>
+  <button id="go">Войти</button>
+  <button type="button" class="ib" id="sw">Нет аккаунта? Регистрация</button>
+  <button type="button" class="ib" id="rs">Забыли пароль?</button>
+ </form>
+ <button type="button" id="signin">Войти через Google</button><div id="err"></div></div>
+<div id="app" hidden>
+ <div class="pane" id="side">
+  <header><span class="sp">Чаты</span><button class="ib" id="new" title="Новый чат">＋</button><button class="ib" id="out" title="Выйти">⎋</button></header>
+  <div id="chats"></div>
+ </div>
+ <div class="pane" id="main">
+  <header><button class="ib" id="back">←</button><span class="sp" id="title"></span></header>
+  <div id="list"><div class="empty">Выберите чат или создайте новый (＋)</div></div>
+  <div id="rp" hidden><span id="rpt"></span><span id="rpx">✕</span></div>
+  <form id="f" hidden><button type="button" class="ib" id="att">📎</button><input type="file" id="file" accept="image/*" hidden><input type="text" id="in" placeholder="Сообщение" maxlength="1000" autocomplete="off"><button>→</button></form>
+ </div>
+</div>
+<script type="module">
+// ВСТАВЬТЕ конфиг из Firebase Console → Project settings → Web app.
+// Пока в apiKey стоит "...", страница работает в демо-режиме с тестовыми данными.
+const firebaseConfig = {apiKey:"...",authDomain:"...",projectId:"...",storageBucket:"...",messagingSenderId:"...",appId:"..."};
+
+const $=id=>document.getElementById(id);
+const h=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
+
+async function firebaseBackend(){
+  const base="https://www.gstatic.com/firebasejs/10.14.1/";
+  const [{initializeApp},A,F]=await Promise.all([import(base+"firebase-app.js"),import(base+"firebase-auth.js"),import(base+"firebase-firestore.js")]);
+  const {collection,doc,setDoc,addDoc,updateDoc,query,where,orderBy,limit,getDocs,onSnapshot,serverTimestamp,arrayUnion,arrayRemove}=F;
+  const app=initializeApp(firebaseConfig),auth=A.getAuth(app),db=F.getFirestore(app);
+  const md=(c,m)=>doc(db,"chats",c,"messages",m);
+  let reg=null;
+  return {
+    demo:false,
+    onUser(cb){A.onAuthStateChanged(auth,async u=>{
+      if(u&&reg)await reg;
+      if(u)await setDoc(doc(db,"users",u.uid),{name:u.displayName||"Друг",email:u.email.toLowerCase()},{merge:true});
+      cb(u?{uid:u.uid,name:u.displayName}:null)})},
+    signIn:()=>A.signInWithPopup(auth,new A.GoogleAuthProvider()),
+    signInEmail:(e,p)=>A.signInWithEmailAndPassword(auth,e,p),
+    async signUpEmail(n,e,p){
+      let done;reg=new Promise(r=>done=r);
+      try{const c=await A.createUserWithEmailAndPassword(auth,e,p);if(n)await A.updateProfile(c.user,{displayName:n})}
+      finally{done();reg=null}},
+    resetPassword:e=>A.sendPasswordResetEmail(auth,e),
+    signOut:()=>A.signOut(auth),
+    watchChats:(uid,cb,err)=>onSnapshot(query(collection(db,"chats"),where("members","array-contains",uid)),s=>cb(s.docs.map(d=>({id:d.id,...d.data()}))),err),
+    async findUser(em){const s=await getDocs(query(collection(db,"users"),where("email","==",em)));return s.empty?null:{id:s.docs[0].id,name:s.docs[0].data().name}},
+    async createChat(data,id){const d={...data,updatedAt:serverTimestamp()};
+      if(id){await setDoc(doc(db,"chats",id),d,{merge:true});return id}
+      return (await addDoc(collection(db,"chats"),d)).id},
+    watchMsgs:(cid,cb)=>onSnapshot(query(collection(db,"chats",cid,"messages"),orderBy("ts","desc"),limit(150)),
+      s=>cb(s.docs.reverse().map(d=>{const x=d.data();return {id:d.id,...x,ts:x.ts?x.ts.toDate():null}}))),
+    markRead:(cid,mid,uid)=>updateDoc(md(cid,mid),{readBy:arrayUnion(uid)}),
+    react:(cid,mid,em,uid,has)=>updateDoc(md(cid,mid),{["reactions."+em]:has?arrayRemove(uid):arrayUnion(uid)}),
+    async send(cid,m,last){
+      await addDoc(collection(db,"chats",cid,"messages"),{...m,ts:serverTimestamp()});
+      updateDoc(doc(db,"chats",cid),{lastText:last,updatedAt:serverTimestamp()})}
+  };
+}
+
+function demoBackend(){
+  const now=()=>Math.floor(Date.now()/1000),ago=m=>new Date(Date.now()-m*60000);
+  const pic=c=>"data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="260"><rect width="400" height="260" fill="'+c+'"/><circle cx="300" cy="80" r="36" fill="#fff" opacity=".7"/><path d="M0 260 L130 120 L230 210 L290 160 L400 260Z" fill="#fff" opacity=".55"/></svg>');
+  const chats=[
+    {id:"1",type:"dm",names:{me:"Я",u1:"Аня"},members:["me","u1"],lastText:"Увидимся в семь",updatedAt:{seconds:now()-1800}},
+    {id:"2",type:"group",name:"Семья",names:{},members:["me","u2","u3"],lastText:"Красота",updatedAt:{seconds:now()-16800}},
+    {id:"3",type:"dm",names:{me:"Я",u4:"Макс"},members:["me","u4"],lastText:"Ок, завтра созвонимся",updatedAt:{seconds:now()-89400}}];
+  const M={
+    "1":[{id:"a",uid:"u1",name:"Аня",text:"Привет! Идёшь сегодня?",ts:ago(40),readBy:["u1","me"],reactions:{}},
+        {id:"b",uid:"me",name:"Я",text:"Да, скоро выхожу",ts:ago(38),readBy:["me","u1"],reactions:{}},
+        {id:"c",uid:"u1",name:"Аня",text:"Тогда жду у входа",replyTo:{id:"b",name:"Я",text:"Да, скоро выхожу"},ts:ago(35),readBy:["u1","me"],reactions:{"👍":["me"]}},
+        {id:"d",uid:"me",name:"Я",text:"Увидимся в семь",ts:ago(30),readBy:["me"],reactions:{}}],
+    "2":[{id:"e",uid:"u2",name:"Мама",text:"Смотрите, какой закат!",ts:ago(300),readBy:["u2","me"],reactions:{"❤️":["u3","me"]}},
+        {id:"f",uid:"u3",name:"Папа",img:pic("#e9a15b"),ts:ago(290),readBy:["u3","me"],reactions:{}},
+        {id:"g",uid:"me",name:"Я",text:"Красота",ts:ago(280),readBy:["me","u2"],reactions:{"😂":["u3"]}}],
+    "3":[{id:"h",uid:"me",name:"Я",text:"Давай завтра созвонимся?",ts:ago(1500),readBy:["me","u4"],reactions:{}},
+        {id:"i",uid:"u4",name:"Макс",text:"Ок, завтра созвонимся",ts:ago(1490),readBy:["u4","me"],reactions:{}}]};
+  let cc=null,mc=null,cur=null,n=100;
+  const pushC=()=>cc&&cc(chats.map(c=>({...c})));
+  const pushM=()=>mc&&cur&&mc((M[cur]||[]).map(m=>({...m})));
+  const find=(cid,mid)=>M[cid].find(m=>m.id===mid);
+  return {
+    demo:true,
+    onUser(cb){cb({uid:"me",name:"Я"})},
+    signIn:async()=>{},
+    signOut:async()=>alert("В демо-режиме выход не нужен"),
+    watchChats(uid,cb){cc=cb;pushC();return()=>{if(cc===cb)cc=null}},
+    async findUser(em){return {id:"u_"+em,name:em.split("@")[0]}},
+    async createChat(data,id){id=id||"c"+(++n);
+      if(!chats.some(c=>c.id===id)){chats.push({id,...data,updatedAt:{seconds:now()}});M[id]=[]}
+      pushC();return id},
+    watchMsgs(cid,cb){cur=cid;mc=cb;pushM();return()=>{if(mc===cb){mc=null;cur=null}}},
+    async markRead(cid,mid,uid){const m=find(cid,mid);if(m&&!(m.readBy||[]).includes(uid))(m.readBy=m.readBy||[]).push(uid)},
+    async react(cid,mid,em,uid,has){const m=find(cid,mid),a=m.reactions[em]||(m.reactions[em]=[]);
+      has?a.splice(a.indexOf(uid),1):a.push(uid);pushM()},
+    async send(cid,m,last){M[cid].push({...m,id:"m"+(++n),ts:new Date(),reactions:{}});
+      const c=chats.find(x=>x.id===cid);c.lastText=last;c.updatedAt={seconds:now()};pushC();pushM()}
+  };
+}
+
+let B;
+const useDemo=firebaseConfig.apiKey==="..."||!firebaseConfig.apiKey;
+try{B=useDemo?demoBackend():await firebaseBackend()}
+catch(e){$("err").textContent="Не удалось загрузить Firebase: "+e.message}
+
+if(B){
+let me,chats=[],cur=null,unsubC,unsubM,reply=null,sel=null,msgs=[];
+if(B.demo){document.title+=" (демо)";$("list").firstChild.textContent="Демо-режим: данные ненастоящие. Выберите чат слева"}
+
+const msg=(t,ok)=>{$("err").textContent=t;$("err").style.color=ok?"var(--mu)":""};
+const authMsg=e=>({
+  "auth/invalid-credential":"Неверный e-mail или пароль","auth/wrong-password":"Неверный e-mail или пароль",
+  "auth/user-not-found":"Неверный e-mail или пароль","auth/email-already-in-use":"Этот e-mail уже зарегистрирован. Нажмите «Войти»",
+  "auth/weak-password":"Пароль слишком простой: нужно минимум 6 символов","auth/invalid-email":"Некорректный e-mail",
+  "auth/too-many-requests":"Слишком много попыток. Попробуйте позже","auth/network-request-failed":"Нет связи с сервером",
+  "auth/operation-not-allowed":"Вход по паролю не включён: Firebase Console → Authentication → Sign-in method → Email/Password"
+}[e.code]||e.message);
+let signup=false;
+$("sw").onclick=()=>{signup=!signup;$("nm").hidden=!signup;$("go").textContent=signup?"Зарегистрироваться":"Войти";
+  $("sw").textContent=signup?"Уже есть аккаунт? Войти":"Нет аккаунта? Регистрация";
+  $("pw").autocomplete=signup?"new-password":"current-password";msg("")};
+$("lf").onsubmit=async e=>{
+  e.preventDefault();msg("");
+  const nm=$("nm").value.trim(),em=$("em").value.trim(),pw=$("pw").value;
+  if(signup&&!nm){msg("Введите имя");return}
+  const b=$("go");b.disabled=true;
+  try{signup?await B.signUpEmail(nm,em,pw):await B.signInEmail(em,pw)}
+  catch(err){msg(authMsg(err))}
+  finally{b.disabled=false}};
+$("rs").onclick=async()=>{
+  const em=$("em").value.trim();
+  if(!em){msg("Введите e-mail и снова нажмите «Забыли пароль?»");return}
+  try{await B.resetPassword(em);msg("Письмо для сброса пароля отправлено на "+em,true)}
+  catch(err){msg(authMsg(err))}};
+$("signin").onclick=()=>B.signIn().catch(e=>msg(authMsg(e)));
+$("out").onclick=()=>B.signOut();
+$("back").onclick=()=>{document.body.classList.remove("chat-open");cur=null};
+
+B.onUser(u=>{
+  me=u;$("login").hidden=!!u;$("app").hidden=!u;if(!u)$("pw").value="";
+  if(unsubC)unsubC();if(!u)return;
+  unsubC=B.watchChats(u.uid,list=>{
+    chats=list.sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0));
+    drawChats()},e=>$("chats").textContent="Нет доступа: "+e.message);
+});
+
+const chatName=c=>c.type==="group"?c.name:(Object.entries(c.names||{}).find(([k])=>k!==me.uid)||[0,"Чат"])[1];
+function drawChats(){
+  const box=$("chats");box.textContent="";
+  if(!chats.length)box.appendChild(h("div","empty","Чатов пока нет. Нажмите ＋"));
+  chats.forEach(c=>{const e=h("div","c"+(cur&&cur.id===c.id?" on":""));
+    e.append(h("b","",(c.type==="group"?"👥 ":"")+chatName(c)),h("span","",c.lastText||"—"));
+    e.onclick=()=>openChat(c);box.appendChild(e)});
+}
+
+$("new").onclick=async()=>{
+  const raw=prompt("E-mail друга (или несколько через запятую — получится группа):");if(!raw)return;
+  const emails=raw.split(",").map(s=>s.trim().toLowerCase()).filter(Boolean),people=[];
+  for(const em of emails){const p=await B.findUser(em);
+    if(!p){alert(em+" ещё не заходил в чат");return}people.push(p)}
+  const names={[me.uid]:me.name||"Я"};people.forEach(p=>names[p.id]=p.name);
+  const members=[me.uid,...people.map(p=>p.id)];
+  let id,data={members,names,lastText:""};
+  if(people.length===1){id=[...members].sort().join("_");data.type="dm"}
+  else{const n=prompt("Название группы:");if(!n)return;data.type="group";data.name=n}
+  id=await B.createChat(data,id);
+  openChat({id,...data});
+};
+
+function openChat(c){
+  cur=c;reply=null;sel=null;$("rp").hidden=true;$("title").textContent=chatName(c);$("f").hidden=false;
+  document.body.classList.add("chat-open");drawChats();
+  if(unsubM)unsubM();
+  unsubM=B.watchMsgs(c.id,list=>{
+    msgs=list;drawMsgs(true);
+    msgs.forEach(m=>{if(m.uid!==me.uid&&!(m.readBy||[]).includes(me.uid))
+      B.markRead(c.id,m.id,me.uid).catch(()=>{})});
+  });
+}
+
+function drawMsgs(scroll){
+  const l=$("list");l.textContent="";
+  msgs.forEach(m=>{
+    const mine=m.uid===me.uid,e=h("div","m"+(mine?" me":""));
+    e.appendChild(h("div","n",m.name||"Друг"));
+    if(m.replyTo){const q=h("div","q");q.textContent=(m.replyTo.name||"")+": "+(m.replyTo.text||"📷");e.appendChild(q)}
+    if(m.img){const i=document.createElement("img");i.src=m.img;e.appendChild(i)}
+    if(m.text)e.appendChild(h("div","",m.text));
+    const rx=Object.entries(m.reactions||{}).filter(([,v])=>v.length);
+    if(rx.length){const r=h("div","rx");rx.forEach(([k,v])=>r.appendChild(h("span","",k+" "+v.length)));e.appendChild(r)}
+    const others=(m.readBy||[]).filter(x=>x!==m.uid).length;
+    e.appendChild(h("div","t",(m.ts?m.ts.toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"}):"")+(mine?(others?" ✓✓":" ✓"):"")));
+    if(sel===m.id){const a=h("div","act");
+      ["👍","❤️","😂"].forEach(em=>{const b=h("button","",em);b.onclick=ev=>{ev.stopPropagation();react(m,em)};a.appendChild(b)});
+      const rb=h("button","","↩");rb.onclick=ev=>{ev.stopPropagation();reply=m;sel=null;$("rpt").textContent="Ответ: "+(m.text||"📷").slice(0,60);$("rp").hidden=false;drawMsgs();$("in").focus()};a.appendChild(rb);e.appendChild(a)}
+    e.onclick=()=>{sel=sel===m.id?null:m.id;drawMsgs()};
+    l.appendChild(e)});
+  if(scroll)l.scrollTop=l.scrollHeight;
+}
+$("rpx").onclick=()=>{reply=null;$("rp").hidden=true};
+
+function react(m,em){
+  const has=(m.reactions?.[em]||[]).includes(me.uid);
+  B.react(cur.id,m.id,em,me.uid,has).catch(()=>{});
+  sel=null;
+}
+
+async function send(text,img){
+  const m={uid:me.uid,name:me.name||"Друг",readBy:[me.uid]};
+  if(text)m.text=text;if(img)m.img=img;
+  if(reply)m.replyTo={id:reply.id,name:reply.name,text:reply.text||""};
+  reply=null;$("rp").hidden=true;
+  await B.send(cur.id,m,text||"📷 Фото");
+}
+$("f").onsubmit=e=>{e.preventDefault();const t=$("in").value.trim();if(!t||!cur)return;$("in").value="";
+  send(t).catch(err=>{$("in").value=t;alert("Не отправлено: "+err.message)})};
+
+$("att").onclick=()=>$("file").click();
+$("file").onchange=async e=>{
+  const f=e.target.files[0];e.target.value="";if(!f||!cur)return;
+  const bmp=await createImageBitmap(f),k=Math.min(1,900/Math.max(bmp.width,bmp.height));
+  const cv=document.createElement("canvas");cv.width=bmp.width*k;cv.height=bmp.height*k;
+  cv.getContext("2d").drawImage(bmp,0,0,cv.width,cv.height);
+  send("",cv.toDataURL("image/jpeg",0.7)).catch(err=>alert("Не отправлено: "+err.message));
+};
+}
+</script>
+</body>
+</html>
