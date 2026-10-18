@@ -285,7 +285,7 @@
     <input class="search" id="contSearch" type="text" placeholder="Поиск по контактам">
     <div class="addrow">
       <select class="sel" id="cEmoji"><option>🙂</option><option>😎</option><option>🦊</option><option>🐼</option><option>🐯</option><option>🦄</option><option>🐲</option><option>🚀</option></select>
-      <input type="text" id="cName" maxlength="40" placeholder="Имя нового контакта">
+      <input type="text" id="cName" maxlength="40" placeholder="Имя или @юзернейм друга">
       <button class="btn" data-cadd="1">＋</button>
     </div>
     <div id="contList" style="margin-top:10px"></div>
@@ -343,6 +343,8 @@
 </nav>
 
 <script>
+/* Режим сервера включает сам сервер (вставляет window.USE_SERVER). Открыт файл напрямую — всё работает локально. */
+const SRV = !!window.USE_SERVER;
 /* ===================== ДАННЫЕ ===================== */
 const DIFF = {
   easy:   { label: 'Легко',      cls: 'd-easy',   supply: 100000, rarity: 'Обычный' },
@@ -969,6 +971,7 @@ function askLogout() {
   $('lgYes').onclick = () => {
     $('modal').classList.remove('on');
     if (cloudCfg) return Cloud.signOut();
+    if (SRV) return srvLogout();
     try { localStorage.removeItem(AK); } catch (e) {}
     renderAuth();
   };
@@ -1166,7 +1169,7 @@ function renderChats() {
 
 function renderMsgs() {
   const c = CH.chats[curChat], ms = c ? c.msgs : [];
-  const note = (curChat !== 'me' && !cloudCfg)
+  const note = (curChat !== 'me' && !cloudCfg && !SRV)
     ? '<div class="bub note" style="font-size:12px">Сообщения хранятся на этом устройстве. Доставка другим людям появится после подключения сервера.</div>' : '';
   $('msgs').innerHTML = note + (ms.length
     ? ms.map((m, i) => {
@@ -1206,6 +1209,12 @@ async function sendMsg() {
     Gifts.addProgress('t6', 1);
     return;
   }
+  if (SRV && curChat !== 'me') {
+    inp.value = ''; setDraft(curChat, ''); autoGrow();
+    try { await api('/messages', 'POST', { to: curChat, text: t }); } catch (e) { inp.value = t; return toast(e.message); }
+    chatOf(curChat).msgs.push({ text: t, ts: Date.now() }); saveCH(); renderMsgs(); scrollEnd();
+    Gifts.addProgress('t1', 1); Gifts.addProgress('t6', 1); return;
+  }
   const c = chatOf(curChat);
   if (editIdx != null) {
     if (c.msgs[editIdx]) { c.msgs[editIdx].text = t; c.msgs[editIdx].edited = 1; }
@@ -1241,26 +1250,38 @@ $('chatMenu').onclick = () => {
 /* ---------- Контакты ---------- */
 function renderContacts() {
   const q = ($('contSearch').value || '').trim().toLowerCase();
-  const list = CH.contacts.filter(c => !c.temp && (!q || c.name.toLowerCase().includes(q)))
+  const list = CH.contacts.filter(c => !c.temp && (!q || c.name.toLowerCase().includes(q) || (c.username || '').toLowerCase().includes(q.replace(/^@/, ''))))
     .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
-  $('contList').innerHTML = list.length
+  $('contList').innerHTML = (SRV ? reqHTML() : '') + (list.length
     ? list.map(c => `<div class="crow" data-chat="${c.id}"><div class="cav" ${avAttr(c, c.id)}>${avIn(c)}</div>
         <div class="cmain"><div class="cname">${esc(c.name)}</div><div class="cprev">${c.username ? '@' + esc(c.username) : 'Нажмите, чтобы написать'}</div></div>
         <button class="del" data-cdel="${c.id}">🗑</button></div>`).join('')
-    : `<div class="empty">${CH.contacts.length ? 'Никого не найдено' : 'Контактов пока нет.<br>Добавьте первый выше.'}</div>`;
+    : `<div class="empty">${CH.contacts.length ? 'Никого не найдено' : 'Контактов пока нет.<br>Добавьте первый выше.'}</div>`);
 }
 async function addContact() {
   const n = $('cName').value.trim();
   if (!n) return toast(cloudCfg ? 'Введите @имя_пользователя' : 'Введите имя');
+  if (SRV) {
+    try { await api('/friends', 'POST', { username: n.replace(/^@/, '') }); $('cName').value = ''; toast('Заявка отправлена ✓'); await sync(); }
+    catch (e) { toast(e.message); }
+    return;
+  }
   if (cloudCfg) {
     if (!inCloud()) return;
     try { await Cloud.addContact(n.replace(/^@/, '')); $('cName').value = ''; toast('Контакт добавлен ✓'); }
     catch (e) { toast(cloudErr(e)); }
     return;
   }
+  let uname = '';
+  if (n[0] === '@') {
+    uname = n.slice(1);
+    if (!/^[a-zA-Z][a-zA-Z0-9_]{4,31}$/.test(uname)) return toast('Юзернейм: латиница, цифры и _, от 5 символов');
+    if (uname.toLowerCase() === (ST.username || '').toLowerCase()) return toast('Это ваш собственный юзернейм');
+    if (CH.contacts.some(c => (c.username || '').toLowerCase() === uname.toLowerCase())) return toast('Этот друг уже добавлен');
+  }
   if (CH.contacts.length >= 100) return toast('Максимум 100 контактов');
   if (CH.contacts.some(c => c.name.toLowerCase() === n.toLowerCase())) return toast('Такой контакт уже есть');
-  CH.contacts.push({ id: Date.now().toString(36) + rnd(1000), name: n, emoji: $('cEmoji').value });
+  CH.contacts.push({ id: Date.now().toString(36) + rnd(1000), name: uname || n, emoji: $('cEmoji').value, ...(uname ? { username: uname } : {}) });
   if (!saveCH()) { CH.contacts.pop(); return toast('Не хватило памяти браузера'); }
   $('cName').value = ''; renderContacts(); toast('Контакт добавлен ✓');
 }
@@ -1304,6 +1325,7 @@ document.addEventListener('click', (e) => {
 
   const cd = e.target.closest('[data-cdel]');
   if (cd) {
+    if (SRV) { if (confirm('Удалить из друзей?')) api('/friends/' + cd.dataset.cdel, 'DELETE').then(sync).catch(x => toast(x.message)); return; }
     if (cloudCfg) {
       if (confirm('Убрать из контактов? Переписка останется в чатах.')) Cloud.removeContact(cd.dataset.cdel).catch(x => toast(cloudErr(x)));
     } else if (confirm('Удалить контакт вместе с перепиской?')) {
@@ -1360,7 +1382,7 @@ function setRbar() {
 }
 $('msgs').addEventListener('click', (e) => {
   const b = e.target.closest('.bub[data-mi]'); if (!b) return;
-  if (cloudCfg) return toast('В облачном режиме пока недоступно');
+  if (cloudCfg || (SRV && curChat !== 'me')) return toast('Действия с сообщениями пока работают только в «Избранном»');
   selMi = +b.dataset.mi;
   const m = CH.chats[curChat].msgs[selMi]; if (!m) return;
   const mine = !m.from || m.from === 'me';
@@ -1405,8 +1427,10 @@ const normPhone = (v) => { let d = v.replace(/\D/g, ''); if (d.length === 11 && 
 let authTab = 'email', authMode = 'in', smsPending = null;
 
 function renderAuth() {
+  if (SRV) authTab = 'email';
   const em = authTab === 'email', reg = authMode === 'up'; let f;
   if (em) f = `<div class="field"><label>Почта</label><input id="aEmail" type="email" autocomplete="email" placeholder="name@mail.ru"></div>
+    ${reg && SRV ? '<div class="field"><label>Юзернейм (латиница, от 5 символов)</label><input id="aUser" type="text" autocapitalize="off" autocomplete="username" placeholder="myname"></div>' : ''}
     <div class="field"><label>Пароль${reg ? ' (от 6 символов)' : ''}</label><input id="aPass" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}"></div>
     ${reg ? '<div class="field"><label>Повторите пароль</label><input id="aPass2" type="password" autocomplete="new-password"></div>' : ''}
     <button class="btn full" id="aGo">${reg ? 'Создать аккаунт' : 'Войти'}</button>
@@ -1420,7 +1444,7 @@ function renderAuth() {
     <button class="btn ghost full" id="pBack" style="margin-top:8px">Изменить номер</button>`;
   $('v-auth').innerHTML = `<div class="box"><div style="font-size:56px;text-align:center">💬</div>
     <h1 style="text-align:center;padding:8px 0 16px">${em && reg ? 'Регистрация' : 'Вход'}</h1>
-    <div class="tabs" style="margin:0 0 10px"><button class="${em ? 'on' : ''}" data-at="email">Почта</button><button class="${em ? '' : 'on'}" data-at="phone">Телефон</button></div>${f}</div>`;
+    <div class="tabs" style="margin:0 0 10px"><button class="${em ? 'on' : ''}" data-at="email">Почта</button>${SRV ? '' : `<button class="${em ? '' : 'on'}" data-at="phone">Телефон</button>`}</div>${f}</div>`;
   $('v-auth').classList.add('on');
 }
 function okAuth(id) {
@@ -1441,6 +1465,7 @@ document.addEventListener('click', async (e) => {
   if (at) { authTab = at.dataset.at; smsPending = null; return renderAuth(); }
   if (t.id === 'aSw') { authMode = authMode === 'up' ? 'in' : 'up'; return renderAuth(); }
   if (t.id === 'pBack') { smsPending = null; return renderAuth(); }
+  if (t.id === 'aGo' && SRV) return serverAuth();
   if (t.id === 'aGo') {
     const email = $('aEmail').value.trim().toLowerCase(), pw = $('aPass').value, U = jget(UK, {});
     if (!/^\S+@\S+\.\S+$/.test(email)) return toast('Введите корректную почту');
@@ -1471,7 +1496,73 @@ document.addEventListener('click', async (e) => {
   }
 });
 
-if (!jget(AK, null)) renderAuth();
+/* ---------- Подключение к серверу ---------- */
+const TK = 'liks_token'; let TOKEN = '', ws = null;
+try { TOKEN = localStorage.getItem(TK) || ''; } catch (e) {}
+async function api(path, method = 'GET', data) {
+  const r = await fetch('/api' + path, { method, headers: { 'Content-Type': 'application/json', ...(TOKEN ? { Authorization: 'Bearer ' + TOKEN } : {}) }, body: data ? JSON.stringify(data) : undefined });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { if (r.status === 401 && TOKEN) srvLogout(); throw new Error(d.error || 'Ошибка сервера'); }
+  return d;
+}
+function reqHTML() {
+  return (CH.reqs || []).map(r => `<div class="crow"><div class="cav" style="background:${avBg(r.id)}">🙂</div><div class="cmain"><div class="cname">@${esc(r.username)}</div><div class="cprev">Хочет добавить вас в друзья</div></div><button class="btn" data-acc="${r.id}">✓</button></div>`).join('');
+}
+async function sync() {
+  const d = await api('/sync');
+  ST.username = d.me.username; if (!ST.name) ST.name = d.me.username; saveST(); updAccountSub();
+  const old = CH.chats, chats = { me: old.me || { msgs: [], folder: '' } };
+  CH.contacts = d.friends.filter(f => f.status === 'ok').map(f => ({ id: String(f.id), name: f.username, username: f.username, emoji: '🙂' }));
+  CH.reqs = d.friends.filter(f => f.status === 'in');
+  d.messages.forEach(m => {
+    const mine = m.from === d.me.id, pid = String(mine ? m.to : m.from);
+    const c = chats[pid] || (chats[pid] = { msgs: [], folder: (old[pid] || {}).folder || '', pin: (old[pid] || {}).pin });
+    c.msgs.push({ text: m.text, ts: m.ts, from: mine ? 'me' : pid });
+  });
+  CH.chats = chats; saveCH(); renderChats(); renderContacts(); if (curChat) renderMsgs();
+}
+function connectWS() {
+  if (ws) { ws.onclose = null; ws.close(); }
+  ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws?token=' + encodeURIComponent(TOKEN));
+  ws.onmessage = (ev) => {
+    let d; try { d = JSON.parse(ev.data); } catch (e) { return; }
+    if (d.t === 'sync') sync().catch(() => {});
+    if (d.t === 'msg') {
+      const pid = String(d.m.from), c = chatOf(pid);
+      c.msgs.push({ text: d.m.text, ts: d.m.ts, from: pid }); saveCH(); renderChats();
+      if (curChat === pid) { renderMsgs(); scrollEnd(); }
+    }
+  };
+  ws.onclose = () => { if (TOKEN) setTimeout(connectWS, 3000); };
+}
+async function startServer() { await sync(); connectWS(); $('v-auth').classList.remove('on'); show('v-chats'); }
+function srvLogout() {
+  TOKEN = ''; try { localStorage.removeItem(TK); localStorage.removeItem(AK); } catch (e) {}
+  if (ws) { ws.onclose = null; ws.close(); }
+  CH = { contacts: [], chats: {}, reqs: [] }; renderAuth();
+}
+async function serverAuth() {
+  const email = $('aEmail').value.trim().toLowerCase(), pw = $('aPass').value, reg = authMode === 'up';
+  if (!/^\S+@\S+\.\S+$/.test(email)) return toast('Введите корректную почту');
+  let data = { email, password: pw };
+  if (reg) {
+    const u = $('aUser').value.trim().replace(/^@/, '');
+    if (!/^[a-zA-Z][a-zA-Z0-9_]{4,31}$/.test(u)) return toast('Юзернейм: латиница, цифры и _, от 5 символов');
+    if (pw.length < 8) return toast('Пароль — минимум 8 символов');
+    if (pw !== $('aPass2').value) return toast('Пароли не совпадают');
+    data.username = u;
+  }
+  try {
+    const d = await api(reg ? '/register' : '/login', 'POST', data);
+    TOKEN = d.token; localStorage.setItem(TK, TOKEN); await startServer(); toast('Добро пожаловать ✓');
+  } catch (e) { toast(e.message); }
+}
+document.addEventListener('click', (e) => {
+  const ac = e.target.closest('[data-acc]');
+  if (ac) api('/friends/accept', 'POST', { id: ac.dataset.acc }).then(sync).catch(x => toast(x.message));
+});
+if (SRV) { if (TOKEN) startServer().catch(() => {}); else renderAuth(); }
+else if (!jget(AK, null)) renderAuth();
 renderChats();
 show('v-chats');
 </script>
