@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+<script>
+/* Режим для GitHub Pages: впишите данные Firebase (см. инструкцию). Пусто — работает режим сервера (server.js). */
+window.NAVI_FB = { apiKey: "", databaseURL: "" };
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Настройки</title>
@@ -345,7 +349,7 @@
 
 <script>
 /* Режим сервера включает сам сервер (вставляет window.USE_SERVER). Открыт файл напрямую — всё работает локально. */
-const SRV = !!window.USE_SERVER;
+const SRV = !!window.USE_SERVER || !!(window.NAVI_FB && window.NAVI_FB.apiKey);
 /* ===================== ДАННЫЕ ===================== */
 const DIFF = {
   easy:   { label: 'Легко',      cls: 'd-easy',   supply: 100000, rarity: 'Обычный' },
@@ -1504,7 +1508,117 @@ document.addEventListener('click', async (e) => {
 /* ---------- Подключение к серверу ---------- */
 const TK = 'liks_token'; let TOKEN = '', ws = null, lastMid = 0, lastFv = null, pollT = null;
 try { TOKEN = localStorage.getItem(TK) || ''; } catch (e) {}
-async function api(path, method = 'GET', data) {
+/* ---------- Firebase Realtime Database по REST (без сервера) ---------- */
+const FBC = window.NAVI_FB || {}, FB = !!FBC.apiKey, FBS = 'navi_fb';
+let FS = null; try { FS = JSON.parse(localStorage.getItem(FBS)); } catch (e) {}
+const FB_ERR = { EMAIL_EXISTS: 'Эта почта уже зарегистрирована', INVALID_LOGIN_CREDENTIALS: 'Неверная почта или пароль', INVALID_PASSWORD: 'Неверная почта или пароль', EMAIL_NOT_FOUND: 'Неверная почта или пароль', WEAK_PASSWORD: 'Пароль слишком простой', INVALID_EMAIL: 'Некорректная почта', TOO_MANY_ATTEMPTS_TRY_LATER: 'Слишком много попыток, подождите' };
+const Q1000 = '&orderBy=' + encodeURIComponent('"$key"') + '&limitToLast=1000';
+async function fbIdt(act, body) {
+  const r = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:' + act + '?key=' + FBC.apiKey, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { const k = String((d.error || {}).message || '').split(' ')[0]; throw new Error(FB_ERR[k] || k || 'Ошибка входа'); }
+  return d;
+}
+function fbSet(d, name) {
+  FS = { uid: d.localId || d.user_id, idToken: d.idToken || d.id_token, refresh: d.refreshToken || d.refresh_token, exp: Date.now() + (+(d.expiresIn || d.expires_in) || 3600) * 1000 - 60000, name: name || (FS && FS.name) || '' };
+  localStorage.setItem(FBS, JSON.stringify(FS));
+}
+async function fbTok() {
+  if (!FS) throw new Error('Нужно войти');
+  if (Date.now() > FS.exp) {
+    const r = await fetch('https://securetoken.googleapis.com/v1/token?key=' + FBC.apiKey, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(FS.refresh) });
+    const d = await r.json().catch(() => ({})); if (!r.ok) { srvLogout(); throw new Error('Нужно войти'); }
+    fbSet(d);
+  }
+  return FS.idToken;
+}
+async function fbDb(path, method = 'GET', body, q = '') {
+  const r = await fetch(FBC.databaseURL.replace(/\/$/, '') + '/' + path + '.json?auth=' + await fbTok() + q, { method, body: body === undefined ? undefined : JSON.stringify(body) });
+  const d = await r.json().catch(() => null);
+  if (!r.ok) throw new Error('Ошибка базы: ' + ((d && d.error) || r.status));
+  return d;
+}
+let fvAt = 0, fvVal = '';
+const fbRooms = (rooms) => Object.entries(rooms || {}).filter(([, x]) => x.members && x.members[FS.uid]).map(([id, x]) => ({ id, name: x.name, type: x.type, handle: x.handle || '', admin: x.owner === FS.uid, n: Object.keys(x.members).length, emoji: x.type === 'channel' ? '📢' : '👥' }));
+async function fbLoad() {
+  const [users, rooms] = await Promise.all([fbDb('users'), fbDb('rooms')]), me = FS.uid, R = rooms || {};
+  if (!R.r0) { R.r0 = { name: 'Общий чат', type: 'group', owner: '', members: { [me]: true } }; await fbDb('rooms/r0', 'PUT', R.r0); }
+  else if (!(R.r0.members || {})[me]) { (R.r0.members = R.r0.members || {})[me] = true; await fbDb('rooms/r0/members/' + me, 'PUT', true); }
+  const friends = Object.entries(users || {}).filter(([id]) => id !== me).map(([id, u]) => ({ id, username: u.username, status: 'ok' })), rl = fbRooms(R);
+  fvAt = Date.now(); fvVal = friends.map(f => f.id).join() + '|' + rl.map(x => x.id + x.name + x.n).join();
+  return { users: users || {}, friends, rooms: rl };
+}
+async function fbApi(path, method, b) {
+  const key = method + ' ' + path.split('?')[0]; let m;
+  if (key === 'POST /register') {
+    const name = String(b.username || '').trim();
+    fbSet(await fbIdt('signUp', { email: b.email, password: b.password, returnSecureToken: true }), name);
+    try {
+      if (await fbDb('names/' + name.toLowerCase())) throw new Error('Юзернейм занят');
+      await fbDb('names/' + name.toLowerCase(), 'PUT', FS.uid);
+      await fbDb('users/' + FS.uid, 'PUT', { username: name });
+    } catch (e) { await fbIdt('delete', { idToken: FS.idToken }).catch(() => {}); FS = null; localStorage.removeItem(FBS); throw e; }
+    return { token: 'fb' };
+  }
+  if (key === 'POST /login') {
+    const d = await fbIdt('signInWithPassword', { email: b.email, password: b.password, returnSecureToken: true });
+    fbSet(d); const u = await fbDb('users/' + FS.uid); fbSet(d, u && u.username);
+    return { token: 'fb' };
+  }
+  if (!FS) { srvLogout(); throw new Error('Нужно войти'); }
+  const me = FS.uid;
+  if (key === 'GET /sync' || key === 'GET /poll') {
+    const poll = key === 'GET /poll', since = poll ? +new URLSearchParams(path.split('?')[1]).get('since') : 0;
+    const inbox = await fbDb('inbox/' + me, 'GET', undefined, poll ? '&orderBy=' + encodeURIComponent('"$key"') + '&startAt=' + encodeURIComponent('"' + since + '"') : Q1000);
+    let msgs = Object.values(inbox || {}).sort((x, y) => x.id - y.id);
+    if (poll) {
+      msgs = msgs.filter(x => x.id > since && x.from !== me);
+      if (Date.now() - fvAt > 8000) await fbLoad();
+      return { messages: msgs, fv: fvVal };
+    }
+    const L = await fbLoad();
+    return { me: { id: me, username: FS.name }, friends: L.friends, rooms: L.rooms, fv: fvVal, messages: msgs };
+  }
+  if (key === 'POST /messages') {
+    const text = String(b.text || '').trim().slice(0, 4000); if (!text) throw new Error('Пустое сообщение');
+    const to = String(b.to); let targets = [me, to];
+    if (isRoom(to)) {
+      const x = await fbDb('rooms/' + to);
+      if (!x || !(x.members || {})[me]) throw new Error('Вы не в этом чате');
+      if (x.type === 'channel' && x.owner !== me) throw new Error('В канал пишет только автор');
+      targets = Object.keys(x.members);
+    }
+    const id = Date.now() * 1000 + Math.floor(Math.random() * 1000), msg = { id, from: me, to, text, ts: Date.now(), fn: FS.name }, up = {};
+    targets.forEach(u => { up['inbox/' + u + '/' + id] = msg; });
+    await fbDb('', 'PATCH', up); return msg;
+  }
+  if (key === 'POST /rooms') {
+    const name = String(b.name || '').trim().slice(0, 64); if (!name) throw new Error('Введите название');
+    const type = b.type === 'channel' ? 'channel' : 'group', handle = String(b.handle || '').trim().replace(/^@/, '').toLowerCase();
+    if (handle) {
+      if (type !== 'channel' || !/^[a-z][a-z0-9_]{4,31}$/.test(handle)) throw new Error('Имя канала: латиница, цифры и _, от 5 символов');
+      if (Object.values(await fbDb('rooms') || {}).some(x => x.handle === handle)) throw new Error('Это имя занято');
+    }
+    const id = 'r' + Date.now(), members = { [me]: true }; (b.members || []).forEach(u => { members[u] = true; });
+    await fbDb('rooms/' + id, 'PUT', { name, type, handle, owner: me, members }); fvAt = 0; return { id };
+  }
+  if (key === 'POST /rooms/join') {
+    const h = String(b.handle || '').trim().replace(/^@/, '').toLowerCase();
+    const e = Object.entries(await fbDb('rooms') || {}).find(([, x]) => x.type === 'channel' && x.handle && x.handle === h);
+    if (!e) throw new Error('Канал не найден');
+    await fbDb('rooms/' + e[0] + '/members/' + me, 'PUT', true); fvAt = 0; return { id: e[0] };
+  }
+  if ((m = path.match(/^\/rooms\/(r\d+)\/(members|leave)$/))) {
+    const rid = m[1];
+    if (method === 'GET') { const mem = await fbDb('rooms/' + rid + '/members') || {}, us = await fbDb('users') || {}; return { members: Object.keys(mem).map(id => ({ id, username: (us[id] || {}).username || '?' })) }; }
+    if (m[2] === 'leave') { if (rid === 'r0') throw new Error('Из общего чата выйти нельзя'); await fbDb('rooms/' + rid + '/members/' + me, 'DELETE'); }
+    else { const up = {}; (b.ids || []).forEach(u => { up[u] = true; }); await fbDb('rooms/' + rid + '/members', 'PATCH', up); }
+    fvAt = 0; return { ok: 1 };
+  }
+  return {};
+}
+function api(path, method = 'GET', data) { return FB ? fbApi(path, method, data || {}) : apiSrv(path, method, data); }
+async function apiSrv(path, method = 'GET', data) {
   const r = await fetch('/api' + path, { method, headers: { 'Content-Type': 'application/json', ...(TOKEN ? { Authorization: 'Bearer ' + TOKEN } : {}) }, body: data ? JSON.stringify(data) : undefined });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) { if (r.status === 401 && TOKEN) srvLogout(); throw new Error(d.error || 'Ошибка сервера'); }
@@ -1560,6 +1674,7 @@ function connectWS() {
 }
 async function startServer() { await sync(); startPoll(); $('v-auth').classList.remove('on'); show('v-chats'); }
 function srvLogout() {
+  FS = null; try { localStorage.removeItem(FBS); } catch (e) {}
   TOKEN = ''; try { localStorage.removeItem(TK); localStorage.removeItem(AK); } catch (e) {}
   if (ws) { ws.onclose = null; ws.close(); }
   if (pollT) clearInterval(pollT);
@@ -1588,7 +1703,7 @@ document.addEventListener('click', (e) => {
 /* ---------- Группы и каналы ---------- */
 const nrSheet = (h) => { $('sheet').innerHTML = h; $('modal').classList.add('on'); };
 const friendPick = () => CH.contacts.length ? CH.contacts.map(c => `<label class="sw-row"><span class="t">@${esc(c.username)}</span><input type="checkbox" class="sw" value="${c.id}"></label>`).join('') : '<div class="lead">Других пользователей пока нет</div>';
-const picked = () => [...$('sheet').querySelectorAll('input.sw:checked')].map(i => +i.value);
+const picked = () => [...$('sheet').querySelectorAll('input.sw:checked')].map(i => i.value);
 $('newRoom').onclick = () => {
   if (!SRV) return toast('Группы и каналы работают при запуске через server.js');
   nrSheet('<h2>Создать</h2><button class="opt" data-nr="g">👥 Новая группа</button><button class="opt" data-nr="c">📢 Новый канал</button><button class="opt" data-nr="j">🔎 Найти канал по @имени</button><button class="opt" data-nr="x">Закрыть</button>');
