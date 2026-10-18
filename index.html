@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nexora</title>
+<style>
+:root{--bg:#f6f5fb;--surface:#fff;--text:#1d1b2e;--muted:#7b7894;--accent:#6c4cf5;--other:#fff;--border:#e4e1f2}
+@media (prefers-color-scheme:dark){:root{--bg:#13121c;--surface:#1c1a2a;--text:#ecebf7;--muted:#8f8cab;--other:#242238;--border:#2e2b45}}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0)}
+header{padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.logo{width:32px;height:32px;border-radius:10px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:700}
+header b{font-size:18px}header small{color:var(--muted);margin-left:auto}
+#list{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:6px}
+.msg{max-width:80%;padding:8px 12px;border-radius:16px;background:var(--other);border:1px solid var(--border);align-self:flex-start;overflow-wrap:anywhere}
+.msg.me{align-self:flex-end;background:var(--accent);color:#fff;border-color:transparent}
+.who{font-size:12px;color:var(--accent);font-weight:600;margin-bottom:2px}.me .who{display:none}
+.time{font-size:11px;opacity:.6;margin-top:2px;text-align:right}
+.empty{margin:auto;color:var(--muted)}
+form{display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0));background:var(--surface);border-top:1px solid var(--border)}
+input{flex:1;min-width:0;font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:10px 14px;outline:none}
+button{font:inherit;border:0;border-radius:20px;background:var(--accent);color:#fff;padding:10px 16px;font-weight:600}
+#join{margin:auto;width:min(320px,90%);display:flex;flex-direction:column;gap:12px;text-align:center}
+#join h1{margin:0}#join input{border-radius:12px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header><div class="logo">N</div><b>Nexora</b><small id="status">подключение…</small></header>
+
+<div id="join" hidden>
+  <h1>Nexora</h1>
+  <div style="color:var(--muted)">Чат для своих. Как вас называть?</div>
+  <input id="nick" maxlength="24" placeholder="Ваш ник" autocomplete="off">
+  <button id="go">Войти</button>
+</div>
+
+<div id="chat" hidden style="flex:1;flex-direction:column;min-height:0">
+  <div id="list"></div>
+  <form id="f"><input id="txt" maxlength="1000" placeholder="Сообщение…" autocomplete="off"><button>→</button></form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+// ВСТАВЬТЕ СВОИ ДАННЫЕ из Supabase: Project Settings → API
+var SUPABASE_URL = "https://ВАШ-ПРОЕКТ.supabase.co";
+var SUPABASE_KEY = "ВАШ-ANON-PUBLIC-КЛЮЧ";
+
+var $ = function(id){return document.getElementById(id)};
+var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var nick = "", msgs = [];
+
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function time(s){return new Date(s).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}
+
+function render(){
+  var l = $("list"), stick = l.scrollHeight - l.scrollTop - l.clientHeight < 80;
+  l.textContent = "";
+  if(!msgs.length){var e=document.createElement("div");e.className="empty";e.textContent="Пока тихо. Напишите первое сообщение!";l.appendChild(e);return}
+  msgs.forEach(function(m){
+    var d=document.createElement("div");
+    d.className="msg"+(m.name===nick?" me":"");
+    var w=document.createElement("div");w.className="who";w.textContent=m.name;
+    var t=document.createElement("div");t.textContent=m.text;
+    var tm=document.createElement("div");tm.className="time";tm.textContent=time(m.created_at);
+    d.append(w,t,tm);l.appendChild(d);
+  });
+  if(stick) l.scrollTop = l.scrollHeight;
+}
+
+async function start(){
+  $("join").hidden = true;
+  $("chat").hidden = false; $("chat").style.display = "flex";
+  var r = await sb.from("messages").select("*").order("created_at",{ascending:false}).limit(150);
+  if(r.error){ $("status").textContent = "ошибка"; return }
+  msgs = r.data.reverse(); render(); $("list").scrollTop = $("list").scrollHeight;
+  sb.channel("nexora").on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},function(p){
+    if(!msgs.some(function(m){return m.id===p.new.id})){msgs.push(p.new);render();$("list").scrollTop=$("list").scrollHeight}
+  }).subscribe(function(s){ $("status").textContent = s==="SUBSCRIBED" ? "онлайн" : "…" });
+}
+
+$("go").onclick = function(){
+  var n=$("nick").value.trim(); if(!n) return;
+  nick=n; lsSet("nexora_nick",n); start();
+};
+$("nick").onkeydown = function(e){ if(e.key==="Enter") $("go").onclick() };
+
+$("f").onsubmit = async function(e){
+  e.preventDefault();
+  var t=$("txt").value.trim(); if(!t) return;
+  $("txt").value = "";
+  var r = await sb.from("messages").insert({name:nick,text:t}).select().single();
+  if(r.error){ $("status").textContent = "не отправлено"; return }
+  if(!msgs.some(function(m){return m.id===r.data.id})){msgs.push(r.data);render();$("list").scrollTop=$("list").scrollHeight}
+};
+
+var saved = lsGet("nexora_nick");
+if(saved){ nick=saved; start() } else { $("status").textContent=""; $("join").hidden=false }
+</script>
+</body>
+</html>
