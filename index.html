@@ -402,6 +402,13 @@ body.still .nc{transform:none!important}
 #ro{text-align:center;background:var(--panel);border-top:1px solid var(--line)}
 .act:disabled{opacity:.4;cursor:default}
 #nwc{white-space:nowrap}
+/* розыгрыши */
+.gw{clear:both;display:grid;gap:6px;margin-top:8px;min-width:200px}
+.gw .pri{width:100%}.gw .pri:disabled{opacity:.65;cursor:default}
+.gwc{font-size:12px;opacity:.75;text-align:center}
+.gww{font-weight:700;text-align:center}
+.gwh{font-weight:700;margin-bottom:4px}
+.shopn{color:var(--mut);font-size:13px;padding:0 20px 6px}
 
 /* ===== Мини-игры ===== */
 #gm{position:fixed;inset:0;z-index:4;display:flex;flex-direction:column;background:radial-gradient(ellipse at 50% 0%,var(--glow2),transparent 60%),var(--bg);padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
@@ -553,7 +560,7 @@ const $=s=>document.querySelector(s);
 const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
 const hm=d=>d.toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'});
 const dm=u=>[me.uid,u].sort().join('_');
-let me,db,auth,FV,users={},chats={},subbed={},cur=null,msgs=[],unsub=null,reply=null,editing=null,reg=false;
+let me,db,auth,FV,users={},chats={},subbed={},cur=null,msgs=[],unsub=null,reply=null,editing=null,reg=false,gwk='';
 const ts=()=>firebase.firestore.FieldValue.serverTimestamp();
 const myName=()=>full(users[me.uid]||{})||me.email.split('@')[0];
 const msgRef=m=>db.collection('chats').doc(cur).collection('messages').doc(m.id);
@@ -855,7 +862,7 @@ function autoPanel(){
 const AR={start:Date.now()};
 function autoReply(id){
   const a=U().auto,c=chats[id];
-  if(!a?.on||id==='general'||!c||c.lastUid===me.uid||c.auto||!c.ts)return;
+  if(!a?.on||id==='general'||id==='giveaways'||!c||c.lastUid===me.uid||c.auto||!c.ts)return;
   const t=c.ts.toMillis?c.ts.toMillis():+c.ts;
   if(t<AR.start||AR[id]===t||Date.now()-(AR['c'+id]||0)<18e5)return;
   AR[id]=t;
@@ -1267,11 +1274,12 @@ function start(u){
   me=u;AR.start=Date.now();$('#auth').hidden=true;$('#app').hidden=false;
   db.collection('users').onSnapshot(s=>{
     users={};s.forEach(d=>users[d.id]=d.data());
-    ['general',...Object.keys(users).filter(k=>k!==me.uid).map(dm)].forEach(id=>{
+    ['general','giveaways',...Object.keys(users).filter(k=>k!==me.uid).map(dm)].forEach(id=>{
       if(subbed[id])return;
       subbed[id]=db.collection('chats').doc(id).onSnapshot(d=>{chats[id]=d.exists?d.data({serverTimestamps:'estimate'}):null;renderList();autoReply(id);chatEvt(id)});
     });
     renderList();cur&&renderHead();$('#side').dataset.t==='prof'&&renderProf();
+    if(cur==='giveaways'){const k=msgs.filter(m=>m.gw).map(m=>m.id+':'+Object.values(users).filter(x=>x.st?.gw?.includes(m.id)).length).join();if(k!==gwk){gwk=k;const bx=$('#msgs'),st=bx.scrollTop;drawMsgs(false);bx.scrollTop=st}}
     {const u=users[me.uid]||{},k=JSON.stringify([u.nft,u.done,u.st,u.best,u.bal]);if(k!==nk){nk=k;$('#side').dataset.t==='nft'&&renderNft()}}
     if(!dd&&users[me.uid]){dd=1;daily()}
   });
@@ -1281,11 +1289,13 @@ function start(u){
 
 /* ---------- список чатов ---------- */
 function entries(){
-  const a=[{id:'general',title:'Общий чат',hue:160,ch:'#'}];
+  const a=[{id:'general',title:'Общий чат',hue:160,ch:'#'},{id:'giveaways',title:'Розыгрыши',hue:330,ch:'🎉'}];
   Object.keys(users).forEach(u=>{if(u!==me.uid)a.push({id:dm(u),peer:u,title:full(users[u])||'Без имени',hue:users[u].hue??200,ph:users[u].ph,un:users[u].username||''})});
   Object.keys(GR).forEach(id=>{const c=chats[id];if(c)a.push({id,g:c.type,title:c.title||'Без названия',hue:c.hue??200,ch:c.type==='channel'?'📢':'👥',own:c.owner,mem:c.members||[]})});
   a.forEach(e=>{const c=chats[e.id];e.last=c?.last||'';e.ts=c?.ts?c.ts.toDate().getTime():0;e.lu=c?.lastUid});
-  return a.sort((x,y)=>y.ts-x.ts);
+  a.sort((x,y)=>y.ts-x.ts);
+  const gi=a.findIndex(e=>e.id==='giveaways');if(gi>0)a.unshift(a.splice(gi,1)[0]); // «Розыгрыши» всегда сверху
+  return a;
 }
 function avatar(e,node){
   if(e.ph){node.textContent='';node.style.background=`center/cover url("${e.ph}")`;return}
@@ -1319,7 +1329,7 @@ $('#q').oninput=renderList;
 /* ---------- чат ---------- */
 function curEntry(){return entries().find(e=>e.id===cur)}
 function renderHead(){
-  const e=curEntry();if(!e)return;$('#hcb').hidden=!e.peer;{const ro=e.g==='channel'&&e.own!==me.uid;$('.cmp').hidden=ro;$('#ro').hidden=!ro}{const p=chats[cur]?.pin;$('#pbar').hidden=!p;if(p){$('#px').textContent=(p.n?p.n+': ':'')+p.t;$('#pu').hidden=!canPin()}}avatar(e,$('#hav'));$('#ht').textContent=e.title;{const bg=e.peer&&badge(e.peer);$('#hbg').replaceChildren(...(bg?[bg]:[]))}
+  const e=curEntry();if(!e)return;$('#hcb').hidden=!e.peer;{const ro=(e.g==='channel'&&e.own!==me.uid)||(e.id==='giveaways'&&!isOwner(me.uid));$('.cmp').hidden=ro;$('#ro').hidden=!ro;$('#ro').textContent=e.id==='giveaways'?'Розыгрыши публикует владелец. Нажимайте «Участвовать» под постом':'Писать в этот канал может только его владелец';$('#inp').placeholder=e.id==='giveaways'?'Текст розыгрыша: приз, условия, дата итогов':'Сообщение'}{const p=chats[cur]?.pin;$('#pbar').hidden=!p;if(p){$('#px').textContent=(p.n?p.n+': ':'')+p.t;$('#pu').hidden=!canPin()}}avatar(e,$('#hav'));$('#ht').textContent=e.title;{const bg=e.peer&&badge(e.peer);$('#hbg').replaceChildren(...(bg?[bg]:[]))}
   {const cc=chats[e.id],tp=Object.keys(cc?.typ||{}).filter(u=>u!==me.uid&&typing(cc,u));
    if(tp.length){$('#hs').textContent=(e.peer?'':tp.map(u=>users[u]?.name||'?').join(', ')+' ')+'печатает…';return}}
   if(!e.peer){$('#hs').textContent=e.g?(e.g==='channel'?'Подписчиков: ':'Участников: ')+e.mem.length:'Участников: '+Object.keys(users).length;return}
@@ -1358,11 +1368,18 @@ function drawMsgs(first){
     if(m.fwd){const f=el('div','q');f.append(el('b',0,'↪ Переслано от '+m.fwd));b.append(f)}
     if(m.reply){const q=el('div','q');q.append(el('b',0,m.reply.n),el('span',0,m.reply.t));b.append(q)}
     if(m.kind){b.append(mediaEl(m));if(m.kind==='circle')b.classList.add('circ')}
+    if(m.gw)b.append(el('div','gwh','🎉 Розыгрыш'));
     const tx=el('span','t');
     if(sq&&m.text){const lo=m.text.toLowerCase();let i=0,j;while((j=lo.indexOf(sq,i))>=0){tx.append(m.text.slice(i,j),el('mark',0,m.text.slice(j,j+sq.length)));i=j+sq.length}tx.append(m.text.slice(i))}else tx.textContent=m.text||'';
     const mt=el('span','meta',(m.auto?'🤖 авто · ':'')+(m.edited?'изм. ':'')+hm(t));
     if(pe&&mine){const tm=tms(m.ts),rv=tms(cc?.rd?.[pe]),dv=tms(cc?.dl?.[pe]),k=rv>=tm?'rd':dv>=tm?'dl':'sent';mt.append(el('span','tk '+k,k==='sent'?' ✓':' ✓✓'))}
     b.append(tx,mt);
+    if(m.gw){
+      const ps=gwPlayers(m),g=el('div','gw');
+      if(m.gwWin)g.append(el('div','gww','🏆 Победитель: '+(m.gwWn||'?')));
+      else{const on=ps.includes(me.uid),bt=el('button','pri',on?'✅ Вы участвуете':'🎉 Участвовать');bt.disabled=on;bt.onclick=ev=>{ev.stopPropagation();joinGw(m)};g.append(bt)}
+      g.append(el('div','gwc','Участников: '+ps.length));b.append(g);
+    }
     const rx=Object.entries(m.rx||{}).filter(([,a])=>a.length);
     if(rx.length){
       const r=el('div','rx');
@@ -1472,7 +1489,7 @@ function notify(id,c){
   try{SWR?SWR.showNotification(title,{body,tag:id}):new Notification(title,{body,tag:id})}catch{}
 }
 function markRead(id){
-  if(document.hidden||id==='general'||chats[id]?.type)return;
+  if(document.hidden||id==='general'||id==='giveaways'||chats[id]?.type)return;
   const c=chats[id];if(!c||!c.ts||c.lastUid===me.uid)return;
   const t=tms(c.ts);if(RD[id]===t||tms(c.rd?.[me.uid])>=t)return;
   RD[id]=t;db.collection('chats').doc(id).set({rd:{[me.uid]:ts()},dl:{[me.uid]:ts()}},{merge:true}).catch(()=>{});
@@ -1483,7 +1500,7 @@ function chatEvt(id){
   const t=tms(c.ts);
   if(NT[id]===undefined)NT[id]=t;
   else if(t>NT[id]){NT[id]=t;if(c.lastUid!==me.uid)notify(id,c)}
-  if(id!=='general'&&!c.type&&c.lastUid&&c.lastUid!==me.uid&&t&&DL[id]!==t&&tms(c.dl?.[me.uid])<t){
+  if(id!=='general'&&id!=='giveaways'&&!c.type&&c.lastUid&&c.lastUid!==me.uid&&t&&DL[id]!==t&&tms(c.dl?.[me.uid])<t){
     DL[id]=t;db.collection('chats').doc(id).set({dl:{[me.uid]:ts()}},{merge:true}).catch(()=>{});
   }
   if(c.typ&&Object.entries(c.typ).some(([u,v])=>u!==me.uid&&Date.now()-v<5000))setTimeout(()=>{renderList();id===cur&&renderHead()},5200);
@@ -1588,7 +1605,7 @@ function buyConfirm(l){
   const x=NM[l.nft];if(!x)return;
   panel('Покупка',c=>{
     const w=el('div','pf');w.append(el('div','ne big',x.e),el('h3',0,x.n),el('p',0,R[x.r][0]+' · продавец '+(l.sname||'?')),el('p',0,'Цена: '+l.price+' 💠 · у вас '+(U().bal||0)+' 💠'));c.append(w);
-    mkAct(c,'Купить за '+l.price+' 💠',()=>buy(l));
+    mkAct(c,'Купить за '+l.price+' 💠',()=>l.sys?buySys(l):buy(l));
   });
 }
 function sellPick(){
@@ -1652,6 +1669,29 @@ function tradeWant(to,give){
     mkAct(c,'Ничего — подарить',()=>offer(to,give.id,''));
   });
 }
+/* магазин Nexora: 200 готовых лотов, одинаковых у всех игроков (детерминированная генерация) */
+let mf='',mn=60;
+const SHOP=(()=>{
+  const mb=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+  const r=mb(20261019),out=[];
+  Object.entries({c:90,r:60,e:30,l:14,m:6}).forEach(([k,n])=>{
+    const pool=N.filter(x=>x.r===k);
+    for(let j=0;j<n;j++){const x=pool[Math.floor(r()*pool.length)];out.push({nft:x.id,price:Math.max(1,Math.round(x.v*(.85+r()*.35)))})}
+  });
+  for(let i=out.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[out[i],out[j]]=[out[j],out[i]]}
+  return out.map((l,i)=>({...l,id:'S'+String(i+1).padStart(3,'0'),sys:true,sname:'Nexora Market'}));
+})();
+async function buySys(l){
+  try{
+    await db.runTransaction(async t=>{
+      const d=(await t.get(uref())).data()||{};
+      if(d.sb?.[l.id])throw 'gone';
+      if((d.bal||0)<l.price)throw 'bal';
+      t.set(uref(),{bal:(d.bal||0)-l.price,nft:{[l.nft]:(d.nft?.[l.nft]||0)+1},sb:{[l.id]:true}},{merge:true});
+    });
+    reveal(NM[l.nft],'Покупка');
+  }catch(e){alert(e==='bal'?'Не хватает 💠':e==='gone'?'Вы уже купили этот лот':'Не удалось купить')}
+}
 function rMkt(c,u){
   c.append(el('div','sub','Баланс: '+(u.bal||0)+' 💠 · бонус начисляется за ежедневный заход'));
   const sb=el('button','act','+ Выставить NFT на продажу');sb.onclick=sellPick;c.append(sb);
@@ -1659,6 +1699,21 @@ function rMkt(c,u){
   if(mine.length){
     c.append(el('div','sub','Мои лоты'));const g=el('div','ng');
     mine.forEach(l=>{const cd=card(NM[l.nft],0,()=>cancelLot(l));cd.querySelector('.nr').textContent=l.price+' 💠 · снять';g.append(cd)});c.append(g);
+  }
+  {
+    const sold=u.sb||{},left=SHOP.filter(l=>!sold[l.id]),shop=left.filter(l=>!mf||NM[l.nft].r===mf);
+    c.append(el('div','sub','🏪 Магазин Nexora · доступно лотов: '+left.length));
+    c.append(el('div','shopn','Каждый лот можно купить один раз.'));
+    const fb=el('div','og seg');
+    [['','Все'],...Object.entries(R).map(([k,v])=>[k,v[0]])].forEach(([k,t])=>{const b=el('button','chip'+(mf===k?' on':''),t);b.onclick=()=>{mf=k;mn=60;renderNft()};fb.append(b)});
+    c.append(fb);
+    if(!shop.length)c.append(el('div','note','Здесь всё куплено.'));
+    else{
+      const sg=el('div','ng');
+      shop.slice(0,mn).forEach(l=>{const cd=card(NM[l.nft],0,()=>buyConfirm(l));cd.querySelector('.nr').textContent=l.price+' 💠';sg.append(cd)});
+      c.append(sg);
+      if(shop.length>mn){const mb=el('button','act','Показать ещё ('+(shop.length-mn)+')');mb.onclick=()=>{mn+=60;renderNft()};c.append(mb)}
+    }
   }
   c.append(el('div','sub','Лоты других игроков'));
   if(!oth.length)return c.append(el('div','note','Лотов пока нет.'));
@@ -2166,6 +2221,26 @@ $('#head').onclick=e=>{
   x.peer?profile(x.peer):x.g?groupInfo(x.id):people();
 };
 
+/* ---------- розыгрыши ---------- */
+// участие хранится в профиле игрока (users/{uid}.st.gw), владелец считает участников по списку users
+const gwPlayers=m=>Object.entries(users).filter(([id,u])=>u.st?.gw?.includes(m.id)).map(([id])=>id);
+async function joinGw(m){
+  if(m.gwWin||gwPlayers(m).includes(me.uid))return;
+  try{await uref().set({st:{gw:FV.arrayUnion(m.id)}},{merge:true})}catch(e){fail(e)}
+}
+async function drawGw(m){
+  const ps=gwPlayers(m).filter(id=>users[id]);
+  if(!ps.length)return alert('В розыгрыше пока никто не участвует');
+  if(!confirm('Выбрать победителя среди '+ps.length+' участников?'))return;
+  const w=ps[rnd(ps.length)],wn=full(users[w])||'Без имени',ref=db.collection('chats').doc('giveaways');
+  try{
+    await msgRef(m).update({gwWin:true,gwWu:w,gwWn:wn});
+    const t='🏆 Победитель розыгрыша — '+wn+'! Участников было: '+ps.length+'. Поздравляем 🎉';
+    await ref.collection('messages').add({uid:me.uid,name:myName(),text:t,ts:ts(),reply:{n:m.name,t:(m.text||'').slice(0,80)}});
+    ref.set({last:'🏆 '+wn,lastUid:me.uid,ts:ts()},{merge:true});
+  }catch(e){fail(e)}
+}
+
 /* ---------- действия с сообщением ---------- */
 function react(m,e){
   const on=m.rx?.[e]?.includes(me.uid);
@@ -2181,6 +2256,10 @@ function sheet(m){
   act('Ответить',()=>setBar('reply',m));
   act('Переслать',()=>fwdPick(m));
   if(canPin()){const pinned=chats[cur]?.pin?.id===m.id;act(pinned?'Открепить':'Закрепить',()=>pinned?unpin():pinMsg(m))}
+  if(m.gw&&isOwner(me.uid)){
+    if(!m.gwWin)act('🎲 Выбрать победителя',()=>drawGw(m));
+    else act('🎁 Выдать приз победителю',()=>nftPicker(m.gwWu));
+  }
   if(m.text)act('Копировать',()=>navigator.clipboard?.writeText(m.text));
   if(m.uid===me.uid&&!m.kind)act('Изменить',()=>{setBar('edit',m);$('#inp').value=m.text;fit()});
   if(m.uid===me.uid||(cur==='general'&&isOwner(me.uid)))act('Удалить',async()=>{
@@ -2204,7 +2283,7 @@ function cancelBar(){
 $('#bc').onclick=cancelBar;
 
 /* ---------- закреплённое сообщение ---------- */
-const canPin=()=>cur==='general'?!!roleOf(me.uid):chats[cur]?.type?chats[cur].owner===me.uid:true;
+const canPin=()=>cur==='giveaways'?isOwner(me.uid):cur==='general'?!!roleOf(me.uid):chats[cur]?.type?chats[cur].owner===me.uid:true;
 const pinMsg=m=>db.collection('chats').doc(cur).set({pin:{id:m.id,t:(lab(m)||'').slice(0,80),n:m.name||''}},{merge:true}).catch(fail);
 const unpin=()=>db.collection('chats').doc(cur).update({pin:FV.delete()}).catch(fail);
 $('#pu').onclick=e=>{e.stopPropagation();unpin()};
@@ -2228,11 +2307,12 @@ $('#inp').onkeydown=e=>{
 $('#go').onclick=send;
 async function send(){
   const i=$('#inp'),text=i.value.trim();if(!text||!cur)return;
-  const ref=db.collection('chats').doc(cur),r=reply,ed=editing;
+  if(cur==='giveaways'&&!isOwner(me.uid))return;
+  const ref=db.collection('chats').doc(cur),r=reply,ed=editing,gw=cur==='giveaways';
   i.value='';reply=null;editing=null;$('#bar').hidden=true;fit();
   if(ed){await msgRef(ed).update({text,edited:true});return}
-  ref.collection('messages').add({uid:me.uid,name:myName(),text,ts:ts(),reply:r});
-  ref.set({last:text.slice(0,80),lastUid:me.uid,ts:ts(),auto:false,typ:{[me.uid]:0},rd:{[me.uid]:ts()},dl:{[me.uid]:ts()}},{merge:true});lastTyp=0;
+  ref.collection('messages').add({uid:me.uid,name:myName(),text,ts:ts(),reply:r,...(gw?{gw:true}:{})});
+  ref.set({last:(gw?'🎉 ':'')+text.slice(0,80),lastUid:me.uid,ts:ts(),auto:false,typ:{[me.uid]:0},rd:{[me.uid]:ts()},dl:{[me.uid]:ts()}},{merge:true});lastTyp=0;
   if(text.length>=3)uref().set({st:{msgs:FV.increment(1),chats:FV.arrayUnion(ref.id),...(r?{replies:FV.increment(1)}:{})}},{merge:true}).catch(()=>{});
 }
 </script>
