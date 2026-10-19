@@ -255,8 +255,9 @@ mark{background:#ffc2dd;color:#3b1a2c}
 .still #sakura{display:none}
 
 /* ===== ИИ-помощник ===== */
-#aifab{position:fixed;right:16px;bottom:calc(92px + env(safe-area-inset-bottom));width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#ffb3d6,var(--accent));color:#fff;font-size:26px;display:grid;place-items:center;box-shadow:0 0 22px var(--glow),0 0 0 3px var(--panel);z-index:6;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:grab}
-#aifab.drag{animation:none!important;cursor:grabbing;transform:scale(1.12);box-shadow:0 0 34px var(--glow),0 0 0 3px var(--panel)}
+#aifab{position:fixed;right:16px;bottom:calc(92px + env(safe-area-inset-bottom));width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#ffb3d6,var(--accent));color:#fff;font-size:26px;display:grid;place-items:center;box-shadow:0 0 22px var(--glow),0 0 0 3px var(--panel);z-index:6;opacity:.4;transition:opacity .2s;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:grab}
+#aifab:active{opacity:.9}
+#aifab.drag{opacity:.9;animation:none!important;cursor:grabbing;transform:scale(1.12);box-shadow:0 0 34px var(--glow),0 0 0 3px var(--panel)}
 #aip{position:fixed;inset:0;z-index:7;display:flex;align-items:flex-end;justify-content:center;background:rgba(40,8,30,.5);backdrop-filter:blur(3px)}
 #aip>div{display:flex;flex-direction:column;width:min(480px,100%);height:min(720px,100%);background:var(--panel);border-radius:22px 22px 0 0;box-shadow:0 0 50px var(--glow2);padding-bottom:env(safe-area-inset-bottom);overflow:hidden}
 @media(min-width:760px){#aip{align-items:center}#aip>div{border-radius:22px;height:min(720px,92vh)}}
@@ -883,7 +884,7 @@ const lab=m=>m.kind?KL[m.kind]+(m.text?' '+m.text:''):m.text;
 const fmt=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 const toB64=u=>{let b='';for(let i=0;i<u.length;i+=32768)b+=String.fromCharCode.apply(null,u.subarray(i,i+32768));return btoa(b)};
 const BC={},MW={};let playing=null;
-function blobUrl(cid,rm){
+function blobUrl(cid,m){
   return BC[m.id]||(BC[m.id]=(async()=>{
     const q=await db.collection('chats').doc(cid).collection('messages').doc(m.id).collection('parts').orderBy('i').get();
     return URL.createObjectURL(new Blob(q.docs.map(d=>Uint8Array.from(atob(d.data().d),c=>c.charCodeAt(0))),{type:m.mime}));
@@ -1002,7 +1003,7 @@ function mkPc(){
   const c=call,pc=c.pc=new RTCPeerConnection({iceServers:ICE});c.pend=[];
   c.stream.getTracks().forEach(t=>pc.addTrack(t,c.stream));
   pc.ontrack=e=>{$('#krv').srcObject=e.streams[0]};
-  pc.onicecandidate=e=>e.candidate&&c.ref.collection('ice').add({from:me.uid,c:e.candidate.toJSON()}).catch(()=>{});
+  pc.onicecandidate=e=>e.candidate&&c.ref.collection('ice').add({from:me.uid,c:e.candidate.toJSON()}).catch(er=>console.warn('ice write',er));
   pc.onconnectionstatechange=()=>{
     const st=pc.connectionState;
     if(st==='connected'&&!c.iv){c.t0=Date.now();$('#kcall').classList.add('live');c.iv=setInterval(()=>{$('#ks').textContent=fmt((Date.now()-c.t0)/1000)},1000)}
@@ -1015,20 +1016,47 @@ function mkPc(){
   }));
 }
 const flushIce=()=>call.pend.splice(0).forEach(c=>call.pc.addIceCandidate(c).catch(()=>{}));
+/* рингтон: входящий — двойной сигнал + вибрация, исходящий — длинный гудок */
+let ringT=null,ringC=null;
+function ringStop(){clearInterval(ringT);ringT=null;try{navigator.vibrate&&navigator.vibrate(0)}catch{}}
+function ringStart(k){
+  ringStop();
+  const vol=k==='in'?.18:.1;
+  const beep=(f,d,t=0)=>{try{
+    ringC=ringC||new(window.AudioContext||window.webkitAudioContext)();
+    if(ringC.state==='suspended')ringC.resume();
+    const o=ringC.createOscillator(),g=ringC.createGain(),s=ringC.currentTime+t;
+    o.type='sine';o.frequency.value=f;o.connect(g);g.connect(ringC.destination);
+    g.gain.setValueAtTime(0,s);g.gain.linearRampToValueAtTime(vol,s+.03);g.gain.setValueAtTime(vol,s+d-.04);g.gain.linearRampToValueAtTime(0,s+d);
+    o.start(s);o.stop(s+d)}catch{}};
+  const tick=()=>{
+    if(k==='in'){beep(880,.35);beep(660,.35,.45);try{navigator.vibrate&&navigator.vibrate([400,200,400])}catch{}}
+    else beep(425,1);
+  };
+  tick();ringT=setInterval(tick,k==='in'?2400:3000);
+}
 async function startCall(peer,video){
   if(users[peer]?.pv?.call==='none'||(users[peer]?.bl||[]).includes(me.uid)||(users[me.uid]?.bl||[]).includes(peer))return alert('Звонок этому пользователю недоступен');
   if(call||rc)return;let stream;
   try{stream=await getMedia(video)}catch{return alert('Нет доступа к микрофону или камере. Нужен HTTPS и разрешение в браузере.')}
   const ref=db.collection('calls').doc();call={ref,stream,video,out:true};
   showCall(users[peer]?.name||'?',users[peer],'Вызов…');mkPc();
-  const c=call,o=await c.pc.createOffer();await c.pc.setLocalDescription(o);
-  await ref.set({from:me.uid,to:peer,video,state:'ringing',offer:{type:o.type,sdp:o.sdp},ts:ts()});
+  const c=call;
+  try{
+    const o=await c.pc.createOffer();await c.pc.setLocalDescription(o);
+    await ref.set({from:me.uid,to:peer,video,state:'ringing',offer:{type:o.type,sdp:o.sdp},ts:ts()});
+  }catch(e){
+    console.warn('call start',e);
+    if(call===c)endCall(false);
+    return alert('Не удалось начать звонок: '+(e.code==='permission-denied'?'нет доступа к базе. В Firestore нужны правила для коллекции calls.':(e.message||e)));
+  }
+  ringStart('out');
   c.un=ref.onSnapshot(async d=>{
     const x=d.data();if(!x||call!==c)return;
-    if(x.answer&&!c.pc.remoteDescription){await c.pc.setRemoteDescription(x.answer);flushIce();$('#ks').textContent='Соединение…'}
-    if(x.state==='declined'){$('#ks').textContent='Отклонён';setTimeout(()=>call===c&&endCall(false),1200)}
+    if(x.answer&&!c.pc.remoteDescription){ringStop();await c.pc.setRemoteDescription(x.answer);flushIce();$('#ks').textContent='Соединение…'}
+    if(x.state==='declined'){ringStop();$('#ks').textContent='Отклонён';setTimeout(()=>call===c&&endCall(false),1200)}
     if(x.state==='ended')endCall(false);
-  });
+  },e=>console.warn('call snapshot',e));
   c.to=setTimeout(()=>{if(call===c&&!c.pc.remoteDescription)endCall(true)},45000);
 }
 function incoming(id,x){
@@ -1036,10 +1064,15 @@ function incoming(id,x){
   if(call||rc){ref.update({state:'declined'}).catch(()=>{});return}
   const c=call={ref,video:x.video,x,inc:true};
   showCall(users[x.from]?.name||'Звонок',users[x.from],x.video?'Видеозвонок…':'Аудиозвонок…');
+  ringStart('in');
+  if(document.hidden&&'Notification' in window&&Notification.permission==='granted'){
+    const o={body:x.video?'Видеозвонок':'Аудиозвонок',tag:'call',renotify:true,requireInteraction:true,vibrate:[400,200,400],icon:'icon.png'},t=users[x.from]?.name||'Входящий звонок';
+    try{if(SWR)SWR.showNotification(t,o);else new Notification(t,o)}catch{}
+  }
   c.un=ref.onSnapshot(d=>{if(call===c&&!c.acc&&d.data()?.state!=='ringing')endCall(false)});
 }
 async function acceptCall(){
-  const c=call;if(!c||!c.inc||c.acc)return;
+  const c=call;if(!c||!c.inc||c.acc)return;ringStop();
   try{c.stream=await getMedia(c.video)}catch{alert('Нет доступа к микрофону или камере.');return endCall(true)}
   c.acc=1;showCall(users[c.x.from]?.name||'Звонок',users[c.x.from],'Соединение…');mkPc();
   await c.pc.setRemoteDescription(c.x.offer);flushIce();
@@ -1047,7 +1080,7 @@ async function acceptCall(){
   await c.ref.update({answer:{type:a.type,sdp:a.sdp},state:'active'});
 }
 function endCall(notify){
-  if(!call)return;const c=call;call=null;
+  if(!call)return;const c=call;call=null;ringStop();
   clearTimeout(c.to);clearInterval(c.iv);c.un&&c.un();c.unI&&c.unI();
   c.stream?.getTracks().forEach(t=>t.stop());try{c.pc?.close()}catch{}
   if(notify)c.ref.update({state:c.out||c.acc?'ended':'declined'}).catch(()=>{});
@@ -1061,8 +1094,8 @@ $('#kc2').onclick=e=>{e.stopPropagation();const x=curEntry();x?.peer&&startCall(
 function listenCalls(){
   db.collection('calls').where('to','==',me.uid).where('state','==','ringing').onSnapshot(s=>s.docChanges().forEach(c=>{
     if(c.type!=='added')return;const x=c.doc.data({serverTimestamps:'estimate'});
-    if(x.ts&&Date.now()-x.ts.toMillis()<45000)incoming(c.doc.id,x);
-  }));
+    if(x.ts&&Date.now()-x.ts.toMillis()<60000)incoming(c.doc.id,x);
+  }),e=>{console.warn('calls listen',e);if(!window._cw){window._cw=1;alert('Входящие звонки не работают: '+(e.code==='permission-denied'?'нет доступа к базе. В Firestore нужны правила для коллекции calls.':(e.message||e)))}});
 }
 
 /* ---------- NFT ---------- */
