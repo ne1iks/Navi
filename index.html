@@ -813,6 +813,7 @@ function renderProf(){
     if(PT==='posts'){const ad=el('button','padd','📷 Добавить');ad.onclick=()=>$('#kfp').click();c.append(ad)}
   }
   mkAct(c,'💖 Пожертвовать',donatePanel);
+  mkAct(c,'🔗 donatty.com/dekiartv6t',()=>donateGo());
   if(isOwner(me.uid))mkAct(c,'👑 Управление админами',adminsPanel);
 }
 const viewPost=x=>panel('Публикация',pc=>{
@@ -2497,11 +2498,40 @@ function donateGo(a){
   if(!/^https:\/\//i.test(u))return alert('Ссылка для донатов указана неверно (нужен https://)');
   if(!window.open(u,'_blank','noopener,noreferrer'))location.href=u;
 }
+function donTop(c){
+  const box=el('div','dtop');c.append(box);
+  const draw=async()=>{
+    box.replaceChildren(el('div','sh','🏆 Топ донатов'));
+    try{
+      const q=await db.collection('donors').orderBy('a','desc').limit(10).get();
+      if(!q.size)box.append(el('div','note','Пока пусто — станьте первым!'));
+      q.docs.forEach((d,i)=>{
+        const x=d.data(),r=el('div','ci'),tx=el('div','tx');
+        tx.append(el('b',0,(['🥇','🥈','🥉'][i]||(i+1)+'.')+' '+x.n));r.append(tx,el('span','chip',x.a+' '+DONATE.cur));
+        if(isOwner(me.uid))r.onclick=async()=>{if(confirm('Удалить «'+x.n+'» из топа?')){await d.ref.delete().catch(fail);draw()}};
+        box.append(r);
+      });
+    }catch{box.append(el('div','note','Рейтинг пока недоступен: нужно разрешить коллекцию donors в правилах Firestore.'))}
+    if(isOwner(me.uid)){
+      const b=el('button','act','➕ Добавить донат в рейтинг');
+      b.onclick=async()=>{
+        const n=((await ask('Имя донатера',{ph:'Как показывать в топе',max:30}))||'').trim();if(!n)return;
+        const v=await ask('Сумма, '+DONATE.cur,{type:'number',val:'100',max:9});if(v===null)return;
+        const a=Math.floor(+v);if(!(a>=1))return alert('Введите сумму от 1');
+        try{await db.collection('donors').doc(n.toLowerCase().replace(/[\/\s]+/g,'_').slice(0,60)).set({n,a:FV.increment(a)},{merge:true})}catch(e){fail(e)}
+        donatePanel();
+      };
+      box.append(b);
+    }
+  };
+  draw();
+}
 function donatePanel(){
   panel('💖 Пожертвовать',c=>{
     const w=el('div','pf');w.append(el('div','ne big','💖'),el('h3',0,'Поддержать Nexora'),el('p',0,'Пожертвования идут на развитие и работу сервиса. Спасибо, что вы с нами!'));c.append(w);
+    donTop(c);
     if(!DONATE.url){c.append(el('div','note',isOwner(me.uid)?'Ссылка на оплату ещё не настроена: в index.html в const DONATE укажите url вашего сервиса донатов.':'Приём пожертвований скоро заработает.'));return}
-    if(!DONATE.url.includes('{amount}')){const pb=el('button','pri','💖 Перейти к донату');pb.style.cssText='margin:6px 20px 16px;width:calc(100% - 40px)';pb.onclick=()=>donateGo();c.append(pb);return}
+    if(!DONATE.url.includes('{amount}')){const pb=el('button','pri','💖 Перейти к донату');pb.style.cssText='margin:6px 20px 16px;width:calc(100% - 40px)';pb.onclick=()=>donateGo();c.append(pb);const dl=el('a','lnk','donatty.com/dekiartv6t');dl.href=DONATE.url;dl.target='_blank';dl.rel='noopener noreferrer';dl.style.cssText='display:block;text-align:center;padding:0 20px 18px';c.append(dl);return}
     const g=el('div','ng');
     DONATE.amounts.forEach(a=>{const b=el('button','nc');b.style.setProperty('--rc','#ff7eb8');b.append(el('div','nn',a+' '+DONATE.cur));b.onclick=()=>donateGo(a);g.append(b)});
     c.append(g);
