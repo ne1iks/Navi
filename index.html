@@ -670,11 +670,7 @@ const ST=[
   opts(c,'Обои','wp',[['','Нет'],['#1f6f5c33','Зелёные'],['#2a6df433','Синие'],['#e0a03033','Тёплые']]);
   tog(c,'Анимации','anim');
 })],
-['#3bb04a','🔑','Конфиденциальность','Время захода, устройства, ключи доступа',()=>panel('Конфиденциальность',c=>{
-  tog(c,'Показывать время захода','seen',()=>db.collection('users').doc(me.uid).set({hide:!S.seen},{merge:true}));
-  mkAct(c,'Устройства',()=>ST[6][4]());
-  mkAct(c,'Сменить пароль (письмо на почту)',()=>auth.sendPasswordResetEmail(me.email).then(()=>alert('Письмо отправлено на '+me.email),()=>alert('Не удалось отправить письмо')));
-})],
+['#3bb04a','🔑','Конфиденциальность','Безопасность, видимость профиля, чёрный список',()=>privPanel()],
 ['#e8475a','🔊','Уведомления','Звуки, счётчик сообщений',()=>panel('Уведомления',c=>{
   tog(c,'Звук новых сообщений','snd',()=>S.snd&&ping());
   tog(c,'Уведомления на экране','ntf',()=>S.ntf&&askNotif());
@@ -1014,6 +1010,7 @@ function mkPc(){
 }
 const flushIce=()=>call.pend.splice(0).forEach(c=>call.pc.addIceCandidate(c).catch(()=>{}));
 async function startCall(peer,video){
+  if(users[peer]?.pv?.call==='none'||(users[peer]?.bl||[]).includes(me.uid)||(users[me.uid]?.bl||[]).includes(peer))return alert('Звонок этому пользователю недоступен');
   if(call||rc)return;let stream;
   try{stream=await getMedia(video)}catch{return alert('Нет доступа к микрофону или камере. Нужен HTTPS и разрешение в браузере.')}
   const ref=db.collection('calls').doc();call={ref,stream,video,out:true};
@@ -1359,6 +1356,59 @@ function rBn(c,u){
   const g=el('div','ng');N.forEach(x=>{const cd=card(x,0,()=>wishTog(x.id));if(!u.wish?.includes(x.id))cd.style.opacity=.5;g.append(cd)});c.append(g);
 }
 
+/* ---------- конфиденциальность ---------- */
+const canInv=id=>users[id]?.pv?.inv!=='none'&&!(users[id]?.bl||[]).includes(me.uid);
+const PVL={all:'Все',none:'Никто'};
+const setPv=(k,v)=>uref().set({pv:{[k]:v}},{merge:true}).then(privPanel);
+function privRow(c,t,val,fn){const b=el('button','ci'),tx=el('div','tx');tx.append(el('b',0,t));b.append(tx,el('span','chip',val));b.onclick=fn;c.append(b)}
+function pvPick(t,cur,fn,hint){panel(t,c=>{hint&&c.append(el('div','note',hint));Object.entries(PVL).forEach(([v,l])=>mkAct(c,(cur===v?'✓ ':'')+l,()=>fn(v)))})}
+function privPanel(){
+  const u=users[me.uid]||{},p=u.pv||{},bl=u.bl||[];
+  panel('Конфиденциальность',c=>{
+    c.append(el('div','sub','Безопасность'));
+    privRow(c,'Код-пароль',localStorage.pc?'Вкл.':'Выкл.',pcPanel);
+    privRow(c,'Почта для входа',me.email||'—',()=>alert('Почта входа: '+me.email));
+    privRow(c,'Чёрный список',bl.length||'Нет',blPanel);
+    privRow(c,'Устройства','1',()=>ST[6][4]());
+    mkAct(c,'Сменить пароль (письмо на почту)',()=>auth.sendPasswordResetEmail(me.email).then(()=>alert('Письмо отправлено на '+me.email),()=>alert('Не удалось отправить письмо')));
+    c.append(el('div','sub','Кто может...'));
+    privRow(c,'Номер телефона','Никто',()=>alert('Номер хранится в закрытом разделе. Его видите только вы.'));
+    privRow(c,'Видеть время захода',PVL[S.seen?'all':'none'],()=>pvPick('Время захода',S.seen?'all':'none',v=>{S.seen=v==='all';save();uref().set({hide:!S.seen},{merge:true}).then(privPanel)}));
+    privRow(c,'Видеть фото профиля',PVL[p.ph||'all'],()=>pvPick('Фото профиля',p.ph||'all',v=>setPv('ph',v)));
+    privRow(c,'Видеть «О себе»',PVL[p.bio||'all'],()=>pvPick('О себе',p.bio||'all',v=>setPv('bio',v)));
+    privRow(c,'Видеть день рождения',PVL[u.bdv==='none'?'none':'all'],()=>pvPick('День рождения',u.bdv==='none'?'none':'all',v=>uref().set({bdv:v,bd:v==='none'||!PV.bd?FV.delete():PV.bd},{merge:true}).then(privPanel)));
+    privRow(c,'Звонить мне',PVL[p.call||'all'],()=>pvPick('Звонки',p.call||'all',v=>setPv('call',v)));
+    privRow(c,'Приглашать в группы',PVL[p.inv||'all'],()=>pvPick('Приглашения',p.inv||'all',v=>setPv('inv',v),'Кого разрешаете приглашать вас в группы и каналы.'));
+    c.append(el('div','note','Настройки применяются в приложении. Для полной защиты данных нужны правила Firestore.'));
+  });
+}
+function blPanel(){
+  const bl=users[me.uid]?.bl||[];
+  panel('Чёрный список',c=>{
+    c.append(el('div','note','Заблокированные не могут вам звонить, их чаты скрыты из списка.'));
+    bl.forEach(id=>mkAct(c,'Разблокировать: '+(full(users[id])||'Без имени'),()=>uref().set({bl:FV.arrayRemove(id)},{merge:true}).then(blPanel)));
+    mkAct(c,'➕ Заблокировать',()=>pickMembers('Заблокировать',Object.entries(users).filter(([id])=>id!==me.uid&&!bl.includes(id)),'Заблокировать',1,ids=>ids&&ids.length?uref().set({bl:FV.arrayUnion(...ids)},{merge:true}).then(blPanel):blPanel()));
+  });
+}
+async function pcPanel(){
+  if(localStorage.pc){if(confirm('Отключить код-пароль?')){localStorage.removeItem('pc');privPanel()}return}
+  const v=await ask('Новый код-пароль',{type:'password',max:8,hint:'От 4 цифр. Хранится только на этом устройстве.',check:async x=>/^\d{4,8}$/.test(x)?[true,'']:[false,'Только цифры, от 4']});
+  if(v&&/^\d{4,8}$/.test(v))localStorage.pc=hsh('pc'+v);
+  privPanel();
+}
+let lockT=0;
+function showLock(){
+  if(!localStorage.pc||document.getElementById('lk'))return;
+  const o=el('div'),i=el('input','fi'),b=el('button','act','Открыть'),e=el('div','pv');o.id='lk';
+  o.style.cssText='position:fixed;inset:0;z-index:99999;background:#10141a;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px';
+  i.type='password';i.inputMode='numeric';i.placeholder='Код-пароль';i.maxLength=8;
+  const go=()=>{if(hsh('pc'+i.value)+''===localStorage.pc+''){o.remove()}else{e.textContent='Неверный код';i.value=''}};
+  b.onclick=go;i.onkeydown=ev=>ev.key==='Enter'&&go();
+  o.append(el('h2',0,'🔒 Введите код-пароль'),i,b,e);document.body.append(o);setTimeout(()=>i.focus(),50);
+}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)lockT=Date.now();else if(lockT&&Date.now()-lockT>6e4)showLock()});
+showLock();
+
 if(!CFG.apiKey)$('#setup').hidden=false;
 else{
   firebase.initializeApp(CFG);auth=firebase.auth();db=firebase.firestore();FV=firebase.firestore.FieldValue;
@@ -1389,7 +1439,7 @@ $('#out').onclick=()=>{unsub&&unsub();auth.signOut();location.reload()};
 function start(u){
   me=u;AR.start=Date.now();$('#auth').hidden=true;$('#app').hidden=false;
   db.collection('users').onSnapshot(s=>{
-    users={};s.forEach(d=>users[d.id]=d.data());
+    users={};s.forEach(d=>{const x=d.data(),p=x.pv||{};if(d.id!==me.uid){if(p.ph==='none')delete x.ph;if(p.bio==='none')delete x.bio}users[d.id]=x});
     ['general','giveaways',...Object.keys(users).filter(k=>k!==me.uid).map(dm)].forEach(id=>{
       if(subbed[id])return;
       subbed[id]=db.collection('chats').doc(id).onSnapshot(d=>{chats[id]=d.exists?d.data({serverTimestamps:'estimate'}):null;renderList();autoReply(id);chatEvt(id)});
@@ -1406,7 +1456,7 @@ function start(u){
 /* ---------- список чатов ---------- */
 function entries(){
   const a=[{id:'general',title:'Общий чат',hue:160,ch:'#'},{id:'giveaways',title:'Розыгрыши',hue:330,ch:'🎉'}];
-  Object.keys(users).forEach(u=>{if(u!==me.uid)a.push({id:dm(u),peer:u,title:full(users[u])||'Без имени',hue:users[u].hue??200,ph:users[u].ph,un:users[u].username||''})});
+  Object.keys(users).forEach(u=>{if(u!==me.uid&&!(users[me.uid]?.bl||[]).includes(u))a.push({id:dm(u),peer:u,title:full(users[u])||'Без имени',hue:users[u].hue??200,ph:users[u].ph,un:users[u].username||''})});
   Object.keys(GR).forEach(id=>{const c=chats[id];if(c)a.push({id,g:c.type,title:c.title||'Без названия',hue:c.hue??200,ch:c.type==='channel'?'📢':'👥',own:c.owner,mem:c.members||[]})});
   a.forEach(e=>{const c=chats[e.id];e.last=c?.last||'';e.ts=c?.ts?c.ts.toDate().getTime():0;e.lu=c?.lastUid});
   a.sort((x,y)=>y.ts-x.ts);
@@ -1923,7 +1973,7 @@ async function mkGroup(type){
   }
   let ids=[];
   if(!ch||!pub){
-    ids=await new Promise(res=>pickMembers(ch?'Кого пригласить':'Участники группы',Object.entries(users).filter(([id])=>id!==me.uid),'Создать',ch?0:1,res));
+    ids=await new Promise(res=>pickMembers(ch?'Кого пригласить':'Участники группы',Object.entries(users).filter(([id])=>id!==me.uid&&canInv(id)),'Создать',ch?0:1,res));
     if(ids===null)return;
   }
   const ref=db.collection('chats').doc();
@@ -1968,7 +2018,7 @@ function groupInfo(id){
     });
     c.append(box);
     if(mine){
-      mkAct(c,'➕ Добавить '+(ch?'подписчиков':'участников'),()=>pickMembers('Добавить',Object.entries(users).filter(([u])=>!mem.includes(u)),'Добавить',1,ids=>{ids&&ids.length&&ref.update({members:FV.arrayUnion(...ids)}).then(()=>groupInfo(id),fail)}));
+      mkAct(c,'➕ Добавить '+(ch?'подписчиков':'участников'),()=>pickMembers('Добавить',Object.entries(users).filter(([u])=>!mem.includes(u)&&canInv(u)),'Добавить',1,ids=>{ids&&ids.length&&ref.update({members:FV.arrayUnion(...ids)}).then(()=>groupInfo(id),fail)}));
       mkAct(c,'✏️ Название',async()=>{const v=await ask('Название',{val:c0.title,max:40});if(v&&v.trim())ref.update({title:v.trim().slice(0,40)}).catch(fail)});
       mkAct(c,'📝 Описание',async()=>{const v=await ask('Описание',{val:c0.desc||'',max:200});if(v!==null)ref.update({desc:v.trim()}).catch(fail)});
       mkAct(c,'🗑 Удалить '+(ch?'канал':'группу'),()=>delChat(id));
