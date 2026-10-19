@@ -37,8 +37,9 @@ input,textarea{font:inherit;color:inherit}
 #side header{padding:14px 16px 8px;display:flex;align-items:center;gap:10px}
 #side h2{font-size:22px;flex:1}
 #q{margin:0 16px 8px;padding:9px 14px;border-radius:20px;border:1px solid var(--line);background:var(--bg)}
-#list{overflow-y:auto;flex:1}
-.ci{display:flex;gap:12px;padding:10px 16px;width:100%;text-align:left;align-items:center}
+#list{overflow-y:auto;overflow-x:hidden;flex:1}
+.ci{display:flex;gap:12px;padding:10px 16px;width:100%;text-align:left;align-items:center;position:relative;touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.ci.swp::after{content:attr(data-sw);position:absolute;left:100%;top:0;bottom:0;width:180px;display:flex;align-items:center;padding-left:22px;background:var(--accent);color:#fff;font-weight:600;font-size:14px}
 .ci.on{background:var(--bg)}
 .av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;flex:none}
 .tx{flex:1;min-width:0}
@@ -576,12 +577,61 @@ const msgRef=m=>db.collection('chats').doc(cur).collection('messages').doc(m.id)
 const S=Object.assign({theme:'auto',fs:16,anim:true,wp:'',seen:true,snd:false,ntf:false,cnt:true,eco:false},JSON.parse(localStorage.set||'{}'));
 let F=JSON.parse(localStorage.fl||'{}'),curF='';
 const save=()=>localStorage.set=JSON.stringify(S),saveF=()=>localStorage.fl=JSON.stringify(F);
+/* архив чатов (как в Telegram) */
+let ARC=[],inArc=false;try{ARC=JSON.parse(localStorage.arc||'[]')}catch{}
+const saveArc=()=>{try{localStorage.arc=JSON.stringify(ARC)}catch{}},isArc=id=>ARC.includes(id);
+function toggleArc(id){ARC=isArc(id)?ARC.filter(x=>x!==id):[...ARC,id];saveArc();renderList()}
+const MU=(()=>{try{return JSON.parse(localStorage.mu||'[]')}catch{return[]}})(),isMu=id=>MU.includes(id);
+const toggleMu=id=>{const i=MU.indexOf(id);i<0?MU.push(id):MU.splice(i,1);try{localStorage.mu=JSON.stringify(MU)}catch{}renderList()};
+function expChat(){const t=msgs.map(m=>{const d=m.ts?.toDate?.();return '['+(d?d.toLocaleString('ru'):'')+'] '+(m.name||'')+': '+(lab(m)||'')}).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/plain'}));a.download='chat-'+cur+'.txt';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000)}
+async function aiPanel(title,prompt){let n;panel(title,c=>{n=el('div','note','Думаю…');c.append(n)});try{n.textContent=await window.nxAI(prompt)}catch(e){n.textContent='Не удалось: '+(e.message||e)}}
+const sumChat=()=>aiPanel('Кратко о чате','Кратко перескажи переписку на русском в 3–5 пунктах:\n'+msgs.slice(-60).map(m=>(m.name||'')+': '+(lab(m)||'')).join('\n'));
+function chatMenu(e){
+  panel(e.title,c=>{
+    mkAct(c,isMu(e.id)?'🔔 Включить уведомления':'🔕 Без звука',()=>toggleMu(e.id));
+    if(e.id===cur){mkAct(c,'🖼 Обои для этого чата',()=>wpPick(cur));if(localStorage[wpKey(cur)])mkAct(c,'Убрать обои чата',()=>wpDel(cur));mkAct(c,'✨ Кратко о чате',sumChat);mkAct(c,'📄 Экспорт чата в файл',expChat)}
+    mkAct(c,isArc(e.id)?'📤 Вернуть из архива':'📥 Архивировать',()=>toggleArc(e.id));
+    mkAct(c,'💬 Открыть чат',()=>open(e.id));
+  });
+}
+/* долгое нажатие — меню, свайп влево — в архив / из архива */
+function rowGest(b,e){
+  let sx=0,sy=0,dx=0,t=null,id=null,sw=false,lp=false;
+  b.dataset.sw=isArc(e.id)?'📤 Вернуть':'📥 Архив';
+  const reset=()=>{b.style.transition='transform .18s,opacity .18s';b.style.transform='';b.style.opacity='';b.classList.remove('swp')};
+  b.addEventListener('pointerdown',ev=>{
+    if(ev.pointerType==='mouse'&&ev.button!==0)return;
+    id=ev.pointerId;sx=ev.clientX;sy=ev.clientY;dx=0;sw=false;lp=false;b._sup=false;b.style.transition='none';
+    clearTimeout(t);t=setTimeout(()=>{if(sw)return;lp=true;b._sup=true;try{navigator.vibrate&&navigator.vibrate(15)}catch{}chatMenu(e)},520);
+  });
+  b.addEventListener('pointermove',ev=>{
+    if(ev.pointerId!==id)return;
+    dx=ev.clientX-sx;const dy=ev.clientY-sy;
+    if(!sw&&(Math.abs(dx)>10||Math.abs(dy)>10))clearTimeout(t);
+    if(!sw&&!lp&&dx<-14&&Math.abs(dx)>Math.abs(dy)*1.5){sw=true;b.classList.add('swp');try{b.setPointerCapture(id)}catch{}}
+    if(sw){b.style.transform='translateX('+Math.max(-170,Math.min(0,dx))+'px)';ev.preventDefault()}
+  });
+  const up=ev=>{
+    if(ev.pointerId!==id)return;id=null;clearTimeout(t);
+    if(sw||lp){b._sup=true;setTimeout(()=>{b._sup=false},120)}
+    if(sw&&dx<-90){b.style.transition='transform .18s,opacity .18s';b.style.transform='translateX(-100%)';b.style.opacity='0';setTimeout(()=>toggleArc(e.id),170)}
+    else if(sw)reset();
+    sw=false;
+  };
+  b.addEventListener('pointerup',up);
+  b.addEventListener('pointercancel',ev=>{if(ev.pointerId!==id)return;id=null;clearTimeout(t);if(sw){reset();sw=false}});
+  b.addEventListener('contextmenu',ev=>{ev.preventDefault();if(!lp)chatMenu(e)});
+}
 function applyS(){
   const r=document.documentElement;
   S.theme==='auto'?r.removeAttribute('data-theme'):r.dataset.theme=S.theme;
   r.style.setProperty('--fs',S.fs+'px');r.style.setProperty('--wp',S.wp||'transparent');
   document.body.classList.toggle('still',!S.anim||S.eco);
 }
+const wpKey=id=>'wpi_'+(id||'');
+function applyWp(){const m=$('#msgs');if(!m)return;let u='';try{u=(cur&&localStorage[wpKey(cur)])||localStorage[wpKey('')]||''}catch{}m.style.background=u?'center/cover no-repeat url("'+u+'")':''}
+function wpPick(id){const i=document.createElement('input');i.type='file';i.accept='image/*';i.onchange=async()=>{const f=i.files[0];if(!f)return;try{localStorage[wpKey(id)]=await shrink(f,1280,.7,0);applyWp()}catch{alert('Не удалось поставить обои: файл слишком большой или не картинка')}};i.click()}
+function wpDel(id){try{localStorage.removeItem(wpKey(id))}catch{}applyWp()}
 applyS();
 function ping(){try{const a=new AudioContext(),o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=880;g.gain.value=.08;o.start();o.stop(a.currentTime+.12)}catch{}}
 function panel(t,f){const s=$('#sheet'),c=s.firstElementChild;s._cl=null;c.replaceChildren(el('div','sh',t));f(c);s.hidden=false}
@@ -676,12 +726,18 @@ const ST=[
   opts(c,'Размер текста','fs',[[14,'Мелкий'],[16,'Обычный'],[18,'Крупный']]);
   opts(c,'Обои','wp',[['','Нет'],['#1f6f5c33','Зелёные'],['#2a6df433','Синие'],['#e0a03033','Тёплые']]);
   tog(c,'Анимации','anim');
+  mkAct(c,'🖼 Свои обои для всех чатов',()=>wpPick(''));
+  if(localStorage[wpKey('')])mkAct(c,'Убрать свои обои',()=>wpDel(''));
 })],
 ['#3bb04a','🔑','Конфиденциальность','Безопасность, видимость профиля, чёрный список',()=>privPanel()],
 ['#e8475a','🔊','Уведомления','Звуки, счётчик сообщений',()=>panel('Уведомления',c=>{
   tog(c,'Звук новых сообщений','snd',()=>S.snd&&ping());
   tog(c,'Уведомления на экране','ntf',()=>S.ntf&&askNotif());
   tog(c,'Счётчик непрочитанных','cnt',renderList);
+  const to=el('div','note','Проверка покажет, дойдёт ли уведомление о сообщении до этого телефона.');
+  const b1=el('button','act','🧪 Проверить уведомление сейчас'),b2=el('button','act','🧪 Проверить через 5 секунд (сверните приложение)');
+  b1.onclick=()=>testNotif(to,0);b2.onclick=()=>testNotif(to,5);
+  c.append(b1,b2,to);
 })],
 ['#4a6fe8','📊','Данные и память','Локальные данные и сброс',()=>panel('Данные и память',c=>{
   mkAct(c,'Очистить отметки прочтения',()=>{Object.keys(localStorage).filter(k=>k.startsWith('r_')).forEach(k=>localStorage.removeItem(k));renderList()});
@@ -1519,14 +1575,28 @@ function renderList(){
   fb.replaceChildren();
   if(Object.keys(F).length)[['','Все'],...Object.keys(F).map(k=>[k,k])].forEach(([k,t])=>{const b=el('button','chip'+(curF===k?' on':''),t);b.onclick=()=>{curF=k;renderList()};fb.append(b)});
   fb.hidden=!fb.childElementCount;
-  entries().filter(e=>(e.title.toLowerCase().includes(f)||(e.un&&e.un.includes(f.replace(/^@/,''))))&&(!curF||F[curF].includes(e.id))).forEach(e=>{
+  const ALL=entries(),arcAll=ALL.filter(e=>isArc(e.id));
+  if(inArc&&!arcAll.length)inArc=false;
+  if(inArc)fb.hidden=true;
+  const mkRow=(ic,title,sub,fn,extra)=>{
+    const b=el('button','ci'),av=el('div','av');avatar({title,hue:215,ch:ic},av);
+    const tx=el('div','tx'),r1=el('div','r1');r1.append(el('b',0,title));extra&&r1.append(extra);
+    const r2=el('div','r1');r2.append(el('div','pv',sub));tx.append(r1,r2);b.append(av,tx);b.onclick=fn;return b;
+  };
+  if(!f&&inArc)box.append(mkRow('←','Архив','Нажмите, чтобы вернуться к чатам',()=>{inArc=false;renderList()}));
+  if(!f&&!inArc&&arcAll.length){
+    const nu=arcAll.filter(unr).length;
+    box.append(mkRow('📦','Архив',arcAll.slice(0,3).map(e=>e.title).join(', '),()=>{inArc=true;renderList()},nu?el('div','dot'):null));
+  }
+  const match=e=>e.title.toLowerCase().includes(f)||(e.un&&e.un.includes(f.replace(/^@/,'')));
+  ALL.filter(e=>match(e)&&(f?true:inArc?isArc(e.id):(!isArc(e.id)&&(!curF||F[curF].includes(e.id))))).forEach(e=>{
     const b=el('button','ci'+(e.id===cur?' on':''));
     const av=el('div','av');avatar(e,av);
     const tx=el('div','tx'),r1=el('div','r1');
     {const l=el('div','nl'),bg=e.peer&&badge(e.peer);l.append(el('b',0,e.title));bg&&l.append(bg);r1.append(l,el('small',0,short(e.ts)))}
     const r2=el('div','r1'),tpn=e.peer&&typing(chats[e.id],e.peer),pvx=el('div','pv',tpn?'печатает…':(e.last||'Напишите первым'));if(tpn)pvx.style.color='var(--accent)';r2.append(pvx);
     if(S.cnt&&unr(e))r2.append(el('div','dot'));
-    tx.append(r1,r2);b.append(av,tx);b.onclick=()=>open(e.id);box.append(b);
+    tx.append(r1,r2);b.append(av,tx);b.onclick=()=>{if(b._sup){b._sup=false;return}open(e.id)};rowGest(b,e);box.append(b);
   });
 }
 $('#q').oninput=renderList;
@@ -1542,17 +1612,17 @@ function renderHead(){
   $('#hs').textContent=!s?'':Date.now()-s<150000?'в сети':'был(а) в '+(s.toDateString()===new Date().toDateString()?hm(s):short(s));
 }
 function open(id){
-  cur=id;localStorage['r_'+id]=Date.now();cancelBar();sq='';$('#sq').value='';$('#sbar').hidden=true;rdKey='';
+  cur=id;localStorage['r_'+id]=Date.now();cancelBar();$('#inp').value=localStorage['dr_'+id]||'';fit();applyWp();sq='';$('#sq').value='';$('#sbar').hidden=true;rdKey='';
   $('#empty').hidden=true;$('#chat').hidden=false;document.body.classList.add('open');
   renderHead();renderList();unsub&&unsub();$('#msgs').replaceChildren();
   let first=true;
   unsub=db.collection('chats').doc(id).collection('messages').orderBy('ts').limitToLast(300).onSnapshot(s=>{
-    if(!first&&S.snd&&s.docChanges().some(c=>c.type==='added'&&c.doc.data().uid!==me.uid))ping();
+    if(!first&&S.snd&&!isMu(id)&&s.docChanges().some(c=>c.type==='added'&&c.doc.data().uid!==me.uid))ping();
     msgs=s.docs.map(d=>({id:d.id,...d.data({serverTimestamps:'estimate'})}));
     drawMsgs(first);first=false;localStorage['r_'+id]=Date.now();renderList();markRead(id);
   });
 }
-$('#back').onclick=()=>{document.body.classList.remove('open');cur=null;unsub&&unsub();$('#chat').hidden=true;$('#empty').hidden=false;renderList()};
+$('#back').onclick=()=>{document.body.classList.remove('open');cur=null;applyWp();unsub&&unsub();$('#chat').hidden=true;$('#empty').hidden=false;renderList()};
 
 function dayLabel(t){
   const n=new Date(),y=new Date(Date.now()-864e5);
@@ -1687,7 +1757,30 @@ function askNotif(){
   if(!('Notification' in window)){S.ntf=false;save();$('#sheet').hidden=true;return alert('Этот браузер не поддерживает уведомления')}
   Notification.requestPermission().then(p=>{if(p!=='granted'){S.ntf=false;save();$('#sheet').hidden=true;alert('Уведомления запрещены в настройках браузера')}});
 }
+async function testNotif(out,delay){
+  const L=[],say=t=>{L.push(t);out.textContent=L.join('\n')};
+  say(location.protocol==='https:'?'✓ Соединение защищено (https)':'✗ Нужен https: без него уведомления не работают');
+  if(!('Notification' in window))return say('✗ Браузер не поддерживает уведомления');
+  let p=Notification.permission;
+  if(p==='default'){try{p=await Notification.requestPermission()}catch{}}
+  say(p==='granted'?'✓ Разрешение на уведомления выдано':p==='denied'?'✗ Уведомления запрещены. Включите их в настройках телефона: Приложения → Chrome → Уведомления':'✗ Разрешение не выдано');
+  say(S.ntf?'✓ Переключатель «Уведомления на экране» включён':'✗ Переключатель «Уведомления на экране» выключен: включите его выше');
+  say(S.snd?'✓ Звук новых сообщений включён':'• Звук новых сообщений выключен');
+  let reg=SWR;
+  if(!reg&&navigator.serviceWorker){try{reg=await navigator.serviceWorker.getRegistration()}catch{}}
+  say(reg?'✓ Служба уведомлений (sw.js) работает':'• sw.js не найден: уведомления придут, только пока приложение открыто');
+  say(navigator.onLine?'✓ Интернет есть':'✗ Нет интернета');
+  if(p!=='granted')return;
+  say(delay?'Тестовое сообщение придёт через '+delay+' с. Можно свернуть приложение.':'Отправляю тестовое сообщение…');
+  setTimeout(()=>{
+    const o={body:'Тестовое сообщение: уведомления работают',tag:'nx-test',renotify:true,vibrate:[200,100,200],icon:'icon.png'};
+    try{if(reg)reg.showNotification('Nexora',o);else new Notification('Nexora',o);say('✓ Уведомление отправлено. Если вы его не увидели, проверьте настройки уведомлений Chrome и режим «Не беспокоить».')}
+    catch(e){say('✗ Не удалось показать: '+(e.message||e))}
+    if(S.snd)ping();
+  },delay*1000);
+}
 function notify(id,c){
+  if(isMu(id))return;
   if(!S.ntf||!('Notification' in window)||Notification.permission!=='granted')return;
   if(!document.hidden&&id===cur)return;
   const e=entries().find(x=>x.id===id),title=e?.title||'Nexora',body=c.last||'Новое сообщение';
@@ -2465,6 +2558,7 @@ function sheet(m){
     if(!m.gwWin)act('🎲 Выбрать победителя',()=>drawGw(m));
     else act('🎁 Выдать приз победителю',()=>nftPicker(m.gwWu));
   }
+  if(m.text)act('🌐 Перевести',()=>aiPanel('Перевод','Переведи на русский (если текст уже русский — на английский). Верни только перевод:\n'+m.text));
   if(m.text)act('Копировать',()=>navigator.clipboard?.writeText(m.text));
   if(m.uid===me.uid&&!m.kind)act('Изменить',()=>{setBar('edit',m);$('#inp').value=m.text;fit()});
   if(m.uid===me.uid||(cur==='general'&&isOwner(me.uid)))act('Удалить',async()=>{
@@ -2505,7 +2599,7 @@ function fit(){
   const i=$('#inp');i.style.height='auto';i.style.height=Math.min(i.scrollHeight,140)+'px';
   $('#go').disabled=!i.value.trim();
 }
-$('#inp').oninput=()=>{fit();typingPing()};
+$('#inp').oninput=()=>{fit();typingPing();if(cur&&!editing){try{const v=$('#inp').value;v?localStorage['dr_'+cur]=v:localStorage.removeItem('dr_'+cur)}catch{}}};
 $('#inp').onkeydown=e=>{
   if(e.key==='Enter'&&!e.shiftKey&&matchMedia('(pointer:fine)').matches){e.preventDefault();send()}
 };
@@ -2514,7 +2608,7 @@ async function send(){
   const i=$('#inp'),text=i.value.trim();if(!text||!cur)return;
   if(cur==='giveaways'&&!isOwner(me.uid))return;
   const ref=db.collection('chats').doc(cur),r=reply,ed=editing,gw=cur==='giveaways';
-  i.value='';reply=null;editing=null;$('#bar').hidden=true;fit();
+  i.value='';localStorage.removeItem('dr_'+cur);reply=null;editing=null;$('#bar').hidden=true;fit();
   if(ed){await msgRef(ed).update({text,edited:true});return}
   ref.collection('messages').add({uid:me.uid,name:myName(),text,ts:ts(),reply:r,...(gw?{gw:true}:{})});
   ref.set({last:(gw?'🎉 ':'')+text.slice(0,80),lastUid:me.uid,ts:ts(),auto:false,typ:{[me.uid]:0},rd:{[me.uid]:ts()},dl:{[me.uid]:ts()}},{merge:true});lastTyp=0;
@@ -2575,6 +2669,7 @@ async function send(){
   }
   busy=false;go.disabled=false;box.scrollTop=box.scrollHeight;
 }
+window.nxAI=async p=>{if(!AI_URL)throw new Error('нет AI_URL');const tok=await firebase.auth().currentUser.getIdToken();const r=await fetch(AI_URL,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+tok},body:JSON.stringify({messages:[{role:'user',content:p}]})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.text)throw new Error(d.error||('Ошибка '+r.status));return d.text};
 /* перетаскивание кнопки пальцем */
 let moved=false,pos=null,pid=null,sx=0,sy=0,ox=0,oy=0,drag=false;
 const KP='ai_fab_pos';
