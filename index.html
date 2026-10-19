@@ -899,7 +899,7 @@ async function sendMedia(kind,blob,extra={}){
     for(let i=0;i<n;i+=3){await Promise.all([...Array(Math.min(3,n-i))].map((_,k)=>put(i+k)));busy('Отправка… '+Math.min(n,i+3)+'/'+n)}
     await mr.set({uid:me.uid,name:myName(),text:cap,ts:ts(),reply:r,kind,n,mime:blob.type,size:by.length,...extra});
     ref.set({last:KL[kind]+(cap?' '+cap.slice(0,60):''),lastUid:me.uid,ts:ts(),auto:false,typ:{[me.uid]:0},rd:{[me.uid]:ts()},dl:{[me.uid]:ts()}},{merge:true});
-    uref().set({st:{msgs:FV.increment(1),chats:FV.arrayUnion(cid)}},{merge:true}).catch(()=>{});
+    uref().set({st:{msgs:FV.increment(1),chats:FV.arrayUnion(cid)}},{merge:true}).catch(()=>{});qInc('msg');
   }catch(e){console.error(e);alert('Не удалось отправить ['+(e?.code||e?.message||e)+']. Если permission-denied — добавьте в правила Firestore доступ к chats/{chat}/messages/{msg}/parts/{part}.')}
   busy();
 }
@@ -1121,8 +1121,8 @@ function renderNft(){
   const c=$('#nft'),u=users[me.uid]||{},g=el('div','og seg');
   c.replaceChildren(el('div','ph','NFT'));
   if(isOwner(me.uid)){const gb=el('button','act','🎁 Выдать NFT по юзернейму');gb.style.cssText='margin:0 16px 8px;width:auto;border:1.5px solid #f0a030;border-radius:14px;text-align:center;font-weight:700;display:block;width:calc(100% - 32px)';gb.onclick=giveByUn;c.append(gb);if(!OWNER_UID)c.append(el('div','note','⚠️ В index.html не задан OWNER_UID. Вставьте ID из профиля в const OWNER_UID=\'\'.'))}
-  [['col','Коллекция'],['task','Задания'],['case','Кейсы'],['up','Апгрейд'],['mkt','Рынок'],['trd','Обмен'],['top','Рейтинг']].forEach(([k,t])=>{const b=el('button','chip'+(nt===k?' on':''),t);b.onclick=()=>{nt=k;renderNft()};g.append(b)});
-  c.append(g);({col:rCol,task:rTask,case:rCase,up:rUp,mkt:rMkt,trd:rTrd,top:rTop})[nt](c,u);
+  [['col','Коллекция'],['task','Задания'],['dq','Квесты'],['bn','Бонусы'],['case','Кейсы'],['cr','Крафт'],['up','Апгрейд'],['mkt','Рынок'],['trd','Обмен'],['top','Рейтинг']].forEach(([k,t])=>{const b=el('button','chip'+(nt===k?' on':''),t);b.onclick=()=>{nt=k;renderNft()};g.append(b)});
+  c.append(g);({col:rCol,task:rTask,dq:rDq,bn:rBn,cr:rCr,case:rCase,up:rUp,mkt:rMkt,trd:rTrd,top:rTop})[nt](c,u);
 }
 function rCol(c,u){
   c.append(el('div','sub','Баланс: '+(u.bal||0)+' 💠'));
@@ -1209,7 +1209,7 @@ async function openCase(cs,sel){
     if(n!==need)return{};nft[got.id]=(nft[got.id]||0)+1;
     return{patch:{nft,st:{cases:(d.st?.cases||0)+1}},out:true};
   }).catch(()=>0);
-  ok?reveal(got,name):alert('Не удалось открыть кейс');
+  if(ok)qInc('cs');ok?reveal(got,name):alert('Не удалось открыть кейс');
 }
 function rUp(c,u){
   const it=own(u);
@@ -1241,6 +1241,122 @@ async function doUp(a,b,ch){
   up=null;
   if(win)reveal(b,'Апгрейд удался!');
   else panel('Не повезло',c=>{const w=el('div','pf');w.append(el('div','ne big','💥'),el('h3',0,a.n+' сгорел'),el('p',0,'Шанс был '+ch+'%'));c.append(w);mkAct(c,'Ок',()=>{})});
+}
+
+/* ---------- квесты дня ---------- */
+const QD=[['buy','Купи лот','Купите любой лот на рынке',1,30],['cs','Открой кейс','Откройте любой кейс',1,40],['msg','Болтовня','Напишите 10 сообщений',10,25]],QALL=50;
+const qDay=()=>new Date().toLocaleDateString('sv');
+const qNow=u=>u?.q?.d===qDay()?u.q:{d:qDay(),p:{},c:{}};
+const qFull=(q,p=q.p,c=q.c)=>({d:q.d,p:{buy:p.buy||0,cs:p.cs||0,msg:p.msg||0},c:{buy:!!c.buy,cs:!!c.cs,msg:!!c.msg,all:!!c.all}});
+function qInc(k){
+  if(k==='msg'&&(qNow(users[me.uid]).p?.msg||0)>=10)return;
+  mutate(d=>{const q=qNow(d),p={...q.p};p[k]=(p[k]||0)+1;const w=wkNow(d);return{patch:{q:qFull(q,p),...(k==='cs'?{w:{k:w.k,cs:w.cs+1,c:!!w.c}}:{})}}}).catch(()=>{});
+}
+async function claimQ(k){
+  const q0=QD.find(x=>x[0]===k),rw=q0?q0[4]:QALL;
+  const ok=await mutate(d=>{
+    const q=qNow(d),c={...q.c};if(c[k])return{};
+    if(q0){if((q.p[k]||0)<q0[3])return{}}else if(!QD.every(x=>c[x[0]]))return{};
+    c[k]=true;return{patch:{q:qFull(q,q.p,c),bal:(d.bal||0)+rw},out:true};
+  }).catch(()=>0);
+  if(!ok)alert('Не удалось забрать награду');
+}
+function rDq(c,u){
+  const q=qNow(u);
+  c.append(el('div','sub','Квесты обновляются каждый день · баланс: '+(u.bal||0)+' 💠'));
+  const row=(t,d,a,b,rw,done,can,fn)=>{
+    const r=el('div','ci'),tx=el('div','tx'),pg=el('div','pg'),i=el('i');
+    i.style.width=Math.min(100,a/b*100)+'%';pg.append(i);
+    tx.append(el('b',0,t),el('div','pv',`${d} · ${Math.min(a,b)}/${b}`),pg);
+    r.append(tx,el('span','chip','+'+rw+' 💠'));
+    if(done)r.append(el('span','chip','✓'));
+    else if(can){const k=el('button','chip on','Забрать');k.onclick=fn;r.append(k)}
+    c.append(r);
+  };
+  QD.forEach(([k,t,d,n,rw])=>{const a=q.p[k]||0;row(t,d,a,n,rw,q.c[k],a>=n,()=>claimQ(k))});
+  const dn=QD.filter(x=>q.c[x[0]]).length;
+  row('Все три за день','Заберите награды всех квестов',dn,3,QALL,q.c.all,dn===3,()=>claimQ('all'));
+}
+
+/* ---------- крафт ---------- */
+const RO='crelm';
+function rCr(c,u){
+  c.append(el('div','sub','Сплавьте 3 NFT одной редкости в 1 случайный NFT следующей. Без риска.'));
+  for(let i=0;i<4;i++){
+    const rar=RO[i],nx=RO[i+1],have=own(u).filter(x=>x.r===rar).reduce((a,x)=>a+x.n,0);
+    const b=el('button','ci'),ic=el('div','si','⚗️'),tx=el('div','tx');ic.style.background=R[nx][1];
+    tx.append(el('b',0,`${R[rar][0]} ×3 → ${R[nx][0]}`),el('div','pv','У вас: '+have+' NFT'));
+    b.append(ic,tx);b.onclick=()=>craftSel(rar);c.append(b);
+  }
+}
+function craftSel(rar){
+  const nx=RO[RO.indexOf(rar)+1],items=own(users[me.uid]||{}).filter(x=>x.r===rar),sel={};
+  const tot=()=>Object.values(sel).reduce((a,b)=>a+b,0);
+  panel('Крафт: '+R[rar][0]+' → '+R[nx][0],c=>{
+    c.append(el('div','note','Выберите 3 NFT редкости «'+R[rar][0]+'». Они сгорят, вы получите случайный «'+R[nx][0]+'».'));
+    const g=el('div','ng'),go=el('button','act');
+    const upd=()=>{g.querySelectorAll('.nc').forEach(b=>{const k=sel[b.dataset.id]||0;b.style.opacity=k?1:.55;b.querySelector('.nr').textContent='выбрано '+k});go.textContent=`Сплавить (${tot()}/3)`;go.disabled=tot()!==3};
+    items.forEach(x=>{const cd=card(x,0,()=>{const k=sel[x.id]||0;sel[x.id]=tot()<3&&k<x.n?k+1:0;upd()});cd.dataset.id=x.id;g.append(cd)});
+    go.onclick=()=>{$('#sheet').hidden=true;doCraft(rar,{...sel})};
+    c.append(g,go);upd();
+    if(items.reduce((a,x)=>a+x.n,0)<3)c.append(el('div','note','Не хватает NFT: нужно минимум 3.'));
+  });
+}
+async function doCraft(rar,sel){
+  const nx=RO[RO.indexOf(rar)+1],pool=N.filter(x=>x.r===nx);if(!pool.length)return alert('Нет NFT следующей редкости');
+  const got=pool[rnd(pool.length)];
+  const ok=await mutate(d=>{
+    const nft={...d.nft};let n=0;
+    for(const[k,v]of Object.entries(sel)){if(!v)continue;if(NM[k]?.r!==rar||(nft[k]||0)<v)return{};nft[k]-=v;n+=v}
+    if(n!==3)return{};nft[got.id]=(nft[got.id]||0)+1;
+    return{patch:{nft,st:{crafts:(d.st?.crafts||0)+1}},out:true};
+  }).catch(()=>0);
+  ok?reveal(got,'Крафт'):alert('Не удалось сплавить');
+}
+
+/* ---------- бонусы: колесо, банк, недельный квест, сеты, пожелания ---------- */
+const wkKey=()=>{const d=new Date();return d.getFullYear()+'-'+Math.floor((d-new Date(d.getFullYear(),0,1))/6048e5)};
+const wkNow=u=>u?.w?.k===wkKey()?{k:u.w.k,cs:u.w.cs||0,c:!!u.w.c}:{k:wkKey(),cs:0,c:false};
+const SETR={c:100,r:300,e:800,l:2000,m:5000};
+async function spin(){
+  const td=qDay(),pr=[10,10,10,25,25,50,150],win=pr[rnd(pr.length)];
+  const ok=await mutate(d=>d.wh===td?{}:{patch:{wh:td,bal:(d.bal||0)+win},out:true}).catch(()=>0);
+  ok?alert('🎡 Выпало: '+win+' 💠'):alert('Колесо уже крутили сегодня');
+}
+async function bank(act){
+  if(act==='in'){
+    const a=Math.floor(+prompt('Сколько 💠 положить на вклад?')||0);if(a<1)return;
+    const ok=await mutate(d=>{if(d.bk?.a||(d.bal||0)<a)return{};return{patch:{bal:d.bal-a,bk:{a,t:Date.now()}},out:true}}).catch(()=>0);
+    if(!ok)alert('Нужен свободный баланс, и вклад может быть только один');
+  }else{
+    let g=0;
+    const ok=await mutate(d=>{if(!d.bk?.a)return{};const days=Math.min(7,Math.floor((Date.now()-d.bk.t)/864e5));g=d.bk.a+Math.floor(d.bk.a*.05*days);return{patch:{bal:(d.bal||0)+g,bk:{a:0,t:0}},out:true}}).catch(()=>0);
+    if(ok)alert('Получено: '+g+' 💠');
+  }
+}
+async function claimW(){
+  const ok=await mutate(d=>{const w=wkNow(d);if(w.c||w.cs<5)return{};return{patch:{w:{k:w.k,cs:w.cs,c:true},bal:(d.bal||0)+150},out:true}}).catch(()=>0);
+  if(!ok)alert('Не удалось забрать награду');
+}
+async function claimSet(r){
+  const ok=await mutate(d=>{if(d.sets?.[r]||!N.filter(x=>x.r===r).every(x=>(d.nft?.[x.id]||0)>0))return{};return{patch:{sets:{[r]:true},bal:(d.bal||0)+SETR[r]},out:true}}).catch(()=>0);
+  if(!ok)alert('Не удалось забрать бонус');
+}
+async function wishTog(id){
+  await mutate(d=>{let w=[...(d.wish||[])];w=w.includes(id)?w.filter(x=>x!==id):[...w,id].slice(-5);return{patch:{wish:w}}}).catch(()=>{});
+}
+function rBn(c,u){
+  const row=(t,d,btn,fn)=>{const r=el('div','ci'),tx=el('div','tx');tx.append(el('b',0,t),el('div','pv',d));r.append(tx);if(btn){const k=el('button','chip on',btn);k.onclick=fn;r.append(k)}c.append(r)};
+  c.append(el('div','sub','Баланс: '+(u.bal||0)+' 💠'));
+  row('🎡 Колесо удачи','Один бесплатный спин в день: 10–150 💠',u.wh===qDay()?'':'Крутить',spin);
+  const b=u.bk?.a?u.bk:null,days=b?Math.min(7,Math.floor((Date.now()-b.t)/864e5)):0;
+  row('🏦 Вклад','5% в сутки, до 7 суток. '+(b?`Лежит ${b.a} 💠, сейчас +${Math.floor(b.a*.05*days)}`:'Вклада нет'),b?'Снять':'Внести',()=>bank(b?'out':'in'));
+  const w=wkNow(u);
+  row('📅 Неделя кейсов','Откройте 5 кейсов за неделю: +150 💠 · '+Math.min(w.cs,5)+'/5',w.c?'✓':w.cs>=5?'Забрать':'',claimW);
+  c.append(el('div','sub','Сеты: соберите все NFT редкости'));
+  Object.keys(SETR).forEach(r=>{const p=N.filter(x=>x.r===r),h=p.filter(x=>u.nft?.[x.id]>0).length;row(R[r][0]+` · ${h}/${p.length}`,'Награда: '+SETR[r]+' 💠',u.sets?.[r]?'✓':h===p.length&&p.length?'Забрать':'',()=>claimSet(r))});
+  c.append(el('div','sub','Пожелания (до 5) — видны в вашем профиле'));
+  const g=el('div','ng');N.forEach(x=>{const cd=card(x,0,()=>wishTog(x.id));if(!u.wish?.includes(x.id))cd.style.opacity=.5;g.append(cd)});c.append(g);
 }
 
 if(!CFG.apiKey)$('#setup').hidden=false;
@@ -1414,7 +1530,7 @@ function profile(id){
   const u=users[id]||{},s=$('#sheet'),c=s.firstElementChild;c.replaceChildren();
   const w=el('div','pf'),av=el('div','av big');
   avatar({title:u.name||'?',hue:u.hue??200,ph:u.ph},av);av.classList.toggle('on',online(u));
-  const h3=el('h3',0,full(u)||'Без имени'),bg=badge(id);bg&&h3.append(bg);w.append(av,h3,el('p',0,stat(u)||'давно не заходил(а)'));if(u.username)w.append(el('p',0,'@'+u.username));if(u.bio)w.append(el('p',0,u.bio));w.append(...extras(u));if(own(u).length)w.append(showcase(u));c.append(w);
+  const h3=el('h3',0,full(u)||'Без имени'),bg=badge(id);bg&&h3.append(bg);w.append(av,h3,el('p',0,stat(u)||'давно не заходил(а)'));if(u.username)w.append(el('p',0,'@'+u.username));if(u.bio)w.append(el('p',0,u.bio));w.append(...extras(u));if(own(u).length)w.append(showcase(u));if(u.wish?.length)w.append(el('p',0,'Хочет: '+u.wish.map(i=>NM[i]?.e).filter(Boolean).join(' ')));c.append(w);
   {const pg=el('div');c.append(pg);
    db.collection('users').doc(id).collection('posts').orderBy('ts','desc').limit(30).get().then(q=>{
     const ps=q.docs.map(d=>({id:d.id,...d.data()})).filter(x=>!x.arch);if(!ps.length)return;
@@ -1557,7 +1673,7 @@ async function payout(l){
   try{await db.runTransaction(async t=>{
     const o=(await t.get(lr)).data();if(!o||o.status!=='sold'||o.paid||o.seller!==me.uid)return;
     const d=(await t.get(uref())).data()||{};
-    t.set(uref(),{bal:(d.bal||0)+o.price},{merge:true});t.update(lr,{paid:true});
+    t.set(uref(),{bal:(d.bal||0)+o.price-Math.floor(o.price*.05)},{merge:true});t.update(lr,{paid:true});
   })}catch{}
   delete BUSY[l.id];
 }
@@ -1598,7 +1714,7 @@ async function buy(l){
       t.set(uref(),{bal:(d.bal||0)-o.price,nft:{[o.nft]:(d.nft?.[o.nft]||0)+1}},{merge:true});
       t.update(lr,{status:'sold',buyer:me.uid,sts:ts()});
     });
-    reveal(NM[l.nft],'Покупка');
+    qInc('buy');reveal(NM[l.nft],'Покупка');
   }catch(e){alert(e==='bal'?'Не хватает 💠':e==='gone'?'Лот уже продан или снят':'Не удалось купить')}
 }
 function buyConfirm(l){
@@ -1689,7 +1805,7 @@ async function buySys(l){
       if((d.bal||0)<l.price)throw 'bal';
       t.set(uref(),{bal:(d.bal||0)-l.price,nft:{[l.nft]:(d.nft?.[l.nft]||0)+1},sb:{[l.id]:true}},{merge:true});
     });
-    reveal(NM[l.nft],'Покупка');
+    qInc('buy');reveal(NM[l.nft],'Покупка');
   }catch(e){alert(e==='bal'?'Не хватает 💠':e==='gone'?'Вы уже купили этот лот':'Не удалось купить')}
 }
 function rMkt(c,u){
@@ -2313,7 +2429,7 @@ async function send(){
   if(ed){await msgRef(ed).update({text,edited:true});return}
   ref.collection('messages').add({uid:me.uid,name:myName(),text,ts:ts(),reply:r,...(gw?{gw:true}:{})});
   ref.set({last:(gw?'🎉 ':'')+text.slice(0,80),lastUid:me.uid,ts:ts(),auto:false,typ:{[me.uid]:0},rd:{[me.uid]:ts()},dl:{[me.uid]:ts()}},{merge:true});lastTyp=0;
-  if(text.length>=3)uref().set({st:{msgs:FV.increment(1),chats:FV.arrayUnion(ref.id),...(r?{replies:FV.increment(1)}:{})}},{merge:true}).catch(()=>{});
+  if(text.length>=3){uref().set({st:{msgs:FV.increment(1),chats:FV.arrayUnion(ref.id),...(r?{replies:FV.increment(1)}:{})}},{merge:true}).catch(()=>{});qInc('msg')}
 }
 </script>
 <div id="sakura" aria-hidden="true"></div>
