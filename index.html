@@ -255,7 +255,8 @@ mark{background:#ffc2dd;color:#3b1a2c}
 .still #sakura{display:none}
 
 /* ===== ИИ-помощник ===== */
-#aifab{position:fixed;right:16px;bottom:calc(92px + env(safe-area-inset-bottom));width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#ffb3d6,var(--accent));color:#fff;font-size:26px;display:grid;place-items:center;box-shadow:0 0 22px var(--glow),0 0 0 3px var(--panel);z-index:6}
+#aifab{position:fixed;right:16px;bottom:calc(92px + env(safe-area-inset-bottom));width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#ffb3d6,var(--accent));color:#fff;font-size:26px;display:grid;place-items:center;box-shadow:0 0 22px var(--glow),0 0 0 3px var(--panel);z-index:6;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:grab}
+#aifab.drag{animation:none!important;cursor:grabbing;transform:scale(1.12);box-shadow:0 0 34px var(--glow),0 0 0 3px var(--panel)}
 #aip{position:fixed;inset:0;z-index:7;display:flex;align-items:flex-end;justify-content:center;background:rgba(40,8,30,.5);backdrop-filter:blur(3px)}
 #aip>div{display:flex;flex-direction:column;width:min(480px,100%);height:min(720px,100%);background:var(--panel);border-radius:22px 22px 0 0;box-shadow:0 0 50px var(--glow2);padding-bottom:env(safe-area-inset-bottom);overflow:hidden}
 @media(min-width:760px){#aip{align-items:center}#aip>div{border-radius:22px;height:min(720px,92vh)}}
@@ -2541,7 +2542,34 @@ async function send(){
   }
   busy=false;go.disabled=false;box.scrollTop=box.scrollHeight;
 }
-fab.onclick=open;$('#aix').onclick=close;
+/* перетаскивание кнопки пальцем */
+let moved=false,pos=null,pid=null,sx=0,sy=0,ox=0,oy=0,drag=false;
+const KP='ai_fab_pos';
+const place=(x,y)=>{const s=fab.offsetWidth||54,w=innerWidth,hh=innerHeight;x=Math.min(Math.max(x,6),Math.max(6,w-s-6));y=Math.min(Math.max(y,6),Math.max(6,hh-s-6));fab.style.left=x+'px';fab.style.top=y+'px';fab.style.right='auto';fab.style.bottom='auto';return[x,y]};
+const fromRatio=()=>{if(!pos)return;const s=fab.offsetWidth||54;place(pos.x*(innerWidth-s),pos.y*(innerHeight-s))};
+try{const p=JSON.parse(localStorage.getItem(KP)||'null');if(p&&p.x>=0&&p.x<=1&&p.y>=0&&p.y<=1){pos=p;fromRatio()}}catch{}
+addEventListener('resize',fromRatio);
+fab.addEventListener('pointerdown',e=>{if(pid!==null)return;pid=e.pointerId;sx=e.clientX;sy=e.clientY;ox=fab.offsetLeft;oy=fab.offsetTop;drag=false;moved=false;try{fab.setPointerCapture(pid)}catch{}});
+fab.addEventListener('pointermove',e=>{
+  if(e.pointerId!==pid)return;
+  const dx=e.clientX-sx,dy=e.clientY-sy;
+  if(!drag&&Math.hypot(dx,dy)<8)return;
+  drag=true;moved=true;fab.classList.add('drag');
+  place(ox+dx,oy+dy);e.preventDefault();
+});
+const endDrag=e=>{
+  if(e.pointerId!==pid)return;
+  pid=null;fab.classList.remove('drag');
+  if(drag){
+    const s=fab.offsetWidth||54,x=fab.offsetLeft,y=fab.offsetTop;
+    pos={x:x/Math.max(1,innerWidth-s),y:y/Math.max(1,innerHeight-s)};
+    try{localStorage.setItem(KP,JSON.stringify(pos))}catch{}
+  }
+  drag=false;setTimeout(()=>{moved=false},60);
+};
+fab.addEventListener('pointerup',endDrag);fab.addEventListener('pointercancel',endDrag);
+fab.addEventListener('contextmenu',e=>e.preventDefault());
+fab.onclick=e=>{if(moved){moved=false;return}open()};$('#aix').onclick=close;
 pan.onclick=e=>{if(e.target===pan)close()};
 $('#aicl').onclick=()=>{if(busy)return;H=[];save();render()};
 go.onclick=send;
