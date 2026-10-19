@@ -1652,7 +1652,7 @@ function notify(id,c){
   if(!S.ntf||!('Notification' in window)||Notification.permission!=='granted')return;
   if(!document.hidden&&id===cur)return;
   const e=entries().find(x=>x.id===id),title=e?.title||'Nexora',body=c.last||'Новое сообщение';
-  try{SWR?SWR.showNotification(title,{body,tag:id}):new Notification(title,{body,tag:id})}catch{}
+  const o={body,tag:id,renotify:true,vibrate:[200,100,200],icon:'icon.png'};try{if(SWR)SWR.showNotification(title,o);else if(navigator.serviceWorker)navigator.serviceWorker.getRegistration().then(r=>r?r.showNotification(title,o):new Notification(title,o)).catch(()=>{});else new Notification(title,o)}catch{}
 }
 function markRead(id){
   if(document.hidden||id==='general'||id==='giveaways'||chats[id]?.type)return;
